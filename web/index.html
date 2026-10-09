@@ -368,6 +368,7 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .demo-banner { background: #FFF7E6; color: #8A5300; text-align: center; font-size: 14px; padding: 8px 16px; border-bottom: 1px solid #F6E2B8; }
 @keyframes fade { from { opacity: 0; } }
+.in-tg #loginBtn, .in-tg #loginBtnM, .in-tg #logoutBtn { display: none !important; }
 
 /* Scroll animatsiyasi (JS bo'lmasa kontent ko'rinib turadi) */
 .js .reveal { opacity: 0; transform: translateY(14px); transition: opacity .5s var(--ease), transform .5s var(--ease); }
@@ -442,6 +443,7 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
   .js .reveal { opacity: 1; transform: none; }
 }
 </style>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
@@ -926,8 +928,13 @@ const state = {
 };
 
 // ---------- Yordamchilar ----------
+// Telegram ichida (bot menyusidagi Mini App) ochilgan bo'lsa
+const TG = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData ? window.Telegram.WebApp : null;
+
 async function api(path, opts = {}) {
-  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, credentials: "same-origin", ...opts });
+  const headers = { "Content-Type": "application/json" };
+  if (state.session) headers["X-Session"] = state.session;
+  const res = await fetch(path, { headers, credentials: "same-origin", ...opts });
   let data = null;
   try { data = await res.json(); } catch (_) {}
   if (!res.ok) {
@@ -946,6 +953,7 @@ function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 function loading(btn, on) { btn.classList.toggle("is-loading", on); btn.disabled = on; btn.setAttribute("aria-busy", on ? "true" : "false"); }
 let toastTimer;
 function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200); }
+const withSession = (path) => (state.session ? path + (path.includes("?") ? "&" : "?") + "s=" + encodeURIComponent(state.session) : path);
 const botUrl = () => (state.cfg && state.cfg.bot ? "https://t.me/" + state.cfg.bot : null);
 const tplIndex = (id) => state.cfg.templates.findIndex((t) => t.id === id) + 1;
 const catName = (c) => state.cfg.categories[c] || c;
@@ -981,7 +989,7 @@ async function loadOrders() {
     <div class="order-row">
       <div style="min-width:0"><div class="order-t">${esc(o.topic)}</div>
       <small>${o.slides} slayd · ${esc(o.created_at.slice(0, 16))}</small></div>
-      <a class="btn btn-secondary btn-sm" href="${o.download}"><svg><use href="#i-down"/></svg>Yuklab olish</a>
+      <a class="btn btn-secondary btn-sm" data-dl="${esc(o.topic)}" href="${withSession(o.download)}"><svg><use href="#i-down"/></svg>Yuklab olish</a>
     </div>`).join("");
 }
 
@@ -1001,6 +1009,7 @@ async function login(btn) {
       if (Date.now() - started > 10 * 60 * 1000) { closeLogin(); return toast("Kirish vaqti tugadi. Qayta urinib ko'ring."); }
       const r = await api("/api/login/check?token=" + encodeURIComponent(token)).catch(() => ({ ok: false }));
       if (r.ok) {
+        state.session = r.session;
         closeLogin();
         await refreshMe();
         toast("Xush kelibsiz, " + state.me.name + "!");
@@ -1234,7 +1243,8 @@ async function poll(job) {
       $("doneText").textContent = state.cfg.bot
         ? "Fayl Telegram botingizga ham yuborildi. PowerPoint, WPS yoki Google Slides'da ochib tahrirlashingiz mumkin."
         : "PowerPoint, WPS yoki Google Slides'da ochib tahrirlashingiz mumkin.";
-      $("downloadBtn").href = j.download;
+      $("downloadBtn").href = withSession(j.download);
+      $("downloadBtn").dataset.dl = j.title;
       $("downloadBtn").focus({ preventScroll: true });
     } else {
       $("failBox").hidden = false;
@@ -1291,14 +1301,43 @@ async function init() {
 
   // Botdagi «Saytda ochish» havolasi: ?login=TOKEN
   const params = new URLSearchParams(location.search);
-  if (params.get("login")) {
+  if (TG) {
+    const r = await api("/api/login/telegram", { method: "POST", body: JSON.stringify({ init_data: TG.initData }) }).catch((e) => ({ ok: false, error: e.message }));
+    if (r.ok) state.session = r.session; else toast(r.error || "Telegram orqali kirib bo'lmadi.");
+    await refreshMe();
+  } else if (params.get("login")) {
     const r = await api("/api/login/check?token=" + encodeURIComponent(params.get("login"))).catch(() => ({ ok: false }));
+    if (r.ok) state.session = r.session;
     history.replaceState(null, "", location.pathname + location.hash);
     await refreshMe();
     toast(r.ok ? "Telegram orqali kirdingiz." : "Kirish havolasi eskirgan. Botda «Saytda ochish» ni qayta bosing.");
   } else {
     await refreshMe();
   }
+}
+
+// ---------- Telegram Mini App ----------
+if (TG) {
+  document.documentElement.classList.add("in-tg");
+  TG.ready();
+  TG.expand();
+  try { TG.setHeaderColor("#FAFAF7"); TG.setBackgroundColor("#FAFAF7"); } catch (_) {}
+  // Fayl yuklash va Telegram havolalari Telegram'ning o'z oynalari orqali ochiladi
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("a[href]");
+    if (!a) return;
+    const url = new URL(a.getAttribute("href"), location.href);
+    if (a.dataset.dl !== undefined) {
+      e.preventDefault();
+      const name = (a.dataset.dl || "taqdimot").replace(/[^\p{L}\p{N} _-]/gu, "").trim().replace(/\s+/g, "_").slice(0, 60) + ".pptx";
+      if (TG.isVersionAtLeast && TG.isVersionAtLeast("8.0") && TG.downloadFile) TG.downloadFile({ url: url.href, file_name: name });
+      else TG.openLink(url.href);
+      toast("Fayl Telegram chatingizga ham yuborilgan.");
+    } else if (url.hostname === "t.me") {
+      e.preventDefault();
+      TG.openTelegramLink(url.href);
+    }
+  });
 }
 
 // ---------- Hodisalar ----------

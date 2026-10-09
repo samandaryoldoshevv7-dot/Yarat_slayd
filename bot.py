@@ -2,7 +2,6 @@
 import asyncio
 import logging
 import random
-import secrets
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -15,8 +14,10 @@ from aiogram.types import (
     FSInputFile,
     InputMediaPhoto,
     KeyboardButton,
+    MenuButtonWebApp,
     Message,
     ReplyKeyboardMarkup,
+    WebAppInfo,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -37,6 +38,8 @@ MAIN_KB = ReplyKeyboardMarkup(
         [KeyboardButton(text=BTN_CREATE)],
         [KeyboardButton(text=BTN_BALANCE), KeyboardButton(text=BTN_FILES)],
         [KeyboardButton(text=BTN_INVITE), KeyboardButton(text=BTN_HELP)],
+        # Oddiy tugma: javobida Mini App tugmasi keladi (klaviatura tugmasidan ochilgan
+        # Mini App foydalanuvchi ma'lumotini olmaydi, shuning uchun inline tugma ishlatiladi)
         [KeyboardButton(text=BTN_SITE)],
     ],
     resize_keyboard=True,
@@ -174,15 +177,11 @@ async def open_site(msg: Message):
     if not config.SITE_URL:
         return await msg.answer("Sayt hali ulanmagan.")
     ensure_user(msg.from_user)
-    # Bir martalik havola: saytga avtomatik kirasiz, balans va ishlar bot bilan umumiy
-    token = secrets.token_urlsafe(18)
-    db.create_login(token)
-    db.confirm_login(token, msg.from_user.id)
     kb = InlineKeyboardBuilder()
-    kb.button(text="🌐 Saytni ochish", url=f"{config.SITE_URL}/?login={token}")
+    kb.button(text="🌐 Saytni ochish", web_app=WebAppInfo(url=config.SITE_URL))
     await msg.answer(
-        "Saytda ham xuddi shu balans va taqdimotlaringiz bor. Saytda rejani tahrirlash va "
-        "50 ta dizaynni katta ko'rinishda tanlash qulayroq.\nHavola 15 daqiqa amal qiladi.",
+        "Sayt Telegram ichida ochiladi va sizni avtomatik taniydi: balans va taqdimotlaringiz umumiy. "
+        "U yerda rejani tahrirlash va 50 ta dizaynni katta ko'rinishda tanlash qulayroq.",
         reply_markup=kb.as_markup(),
     )
 
@@ -524,6 +523,15 @@ async def run():
     notify.bot = bot
     config.BOT_USERNAME = config.BOT_USERNAME or me.username
     log.info("Bot ishga tushdi: @%s", me.username)
+    if config.SITE_URL:
+        # Chat pastidagi menyu tugmasi saytni Mini App sifatida ochadi
+        try:
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(text="Saytni ochish", web_app=WebAppInfo(url=config.SITE_URL))
+            )
+            log.info("Mini App tugmasi: %s", config.SITE_URL)
+        except Exception:
+            log.exception("Menyu tugmasini o'rnatib bo'lmadi")
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
     await dp.start_polling(bot, handle_signals=False)
