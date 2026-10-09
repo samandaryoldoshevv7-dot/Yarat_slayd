@@ -1,4 +1,6 @@
 aiogram>=3.31,<4
 anthropic>=1.12,<2
+fastapi>=0.115
+uvicorn>=0.30
 python-pptx>=1.0.2
 Pillow>=10

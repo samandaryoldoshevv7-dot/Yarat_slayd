@@ -1,9 +1,13 @@
-"""AI matn generatsiyasi (Claude). Ikki bosqich: reja (bepul) va to'liq matn (pullik).
+"""AI matn generatsiyasi. Ikki bosqich: reja (bepul) va to'liq matn (pullik).
 
-ANTHROPIC_API_KEY bo'lmasa DEMO rejim ishlaydi — botni kalitsiz sinab ko'rish uchun.
+Provayder config.AI_PROVIDER bo'yicha tanlanadi:
+  gemini — Google Gemini (bepul limit bilan), claude — Anthropic Claude, demo — kalitsiz sinov.
 """
+import asyncio
 import json
 import logging
+
+import aiohttp
 
 from . import config
 
@@ -77,6 +81,94 @@ def _get_client():
 
 
 async def _ask_json(prompt: str, schema: dict, max_tokens: int) -> dict:
+    if config.AI_PROVIDER == "gemini":
+        return await _ask_gemini(prompt, schema, max_tokens)
+    return await _ask_claude(prompt, schema, max_tokens)
+
+
+# ---------------- Gemini (REST) ----------------
+
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+
+def _gemini_schema(schema: dict) -> dict:
+    """JSON Schema -> Gemini responseSchema (OpenAPI uslubi, additionalProperties'siz)."""
+    out = {"type": schema["type"].upper()}
+    if "properties" in schema:
+        out["properties"] = {k: _gemini_schema(v) for k, v in schema["properties"].items()}
+        out["required"] = schema.get("required", [])
+        out["propertyOrdering"] = list(schema["properties"])
+    if "items" in schema:
+        out["items"] = _gemini_schema(schema["items"])
+    return out
+
+
+async def _ask_gemini(prompt: str, schema: dict, max_tokens: int) -> dict:
+    body = {
+        "systemInstruction": {"parts": [{"text": SYSTEM}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": _gemini_schema(schema),
+            # 2.5+ modellarda "o'ylash" tokenlari ham shu limitga kiradi
+            "maxOutputTokens": max(max_tokens * 2, 8192),
+            "temperature": 0.7,
+        },
+    }
+    models = [config.GEMINI_MODEL] + [m for m in ("gemini-flash-latest",) if m != config.GEMINI_MODEL]
+    timeout = aiohttp.ClientTimeout(total=180)
+    last_error = "AI xatosi"
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        for model in models:
+            for attempt in range(3):
+                try:
+                    async with session.post(
+                        GEMINI_URL.format(model=model),
+                        params={"key": config.GEMINI_API_KEY},
+                        json=body,
+                    ) as r:
+                        data = await r.json(content_type=None)
+                        status = r.status
+                except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                    log.warning("Gemini ulanish xatosi: %s", e)
+                    last_error = "AI serveriga ulanib bo'lmadi"
+                    await asyncio.sleep(2 * (attempt + 1))
+                    continue
+                if status == 200:
+                    return _parse_gemini(data)
+                msg = (data.get("error") or {}).get("message", "") if isinstance(data, dict) else ""
+                log.warning("Gemini %s (%s): %s", status, model, msg[:300])
+                if status == 404:  # model nomi eskirgan — keyingisini sinaymiz
+                    break
+                if status in (429, 500, 502, 503, 504):
+                    last_error = "AI hozir band (bepul limit), birozdan so'ng urinib ko'ring"
+                    await asyncio.sleep(3 * (attempt + 1))
+                    continue
+                if status in (401, 403) or "API key" in msg or "API_KEY" in msg:
+                    raise AIError("Gemini kaliti noto'g'ri yoki ruxsat yo'q (GEMINI_API_KEY ni tekshiring)")
+                if status == 400:
+                    raise AIError(f"AI so'rovi qabul qilinmadi: {msg[:150]}")
+                raise AIError(f"AI xatosi ({status})")
+    raise AIError(last_error)
+
+
+def _parse_gemini(data: dict) -> dict:
+    cands = data.get("candidates") or []
+    if not cands:
+        raise AIError("AI bu mavzuda javob bermadi, mavzuni boshqacha yozib ko'ring")
+    cand = cands[0]
+    if cand.get("finishReason") == "MAX_TOKENS":
+        raise AIError("Javob juda uzun chiqdi, slaydlar sonini kamaytiring")
+    text = "".join(p.get("text", "") for p in (cand.get("content") or {}).get("parts", []))
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        raise AIError("AI javobini o'qib bo'lmadi, qayta urinib ko'ring") from e
+
+
+# ---------------- Claude ----------------
+
+async def _ask_claude(prompt: str, schema: dict, max_tokens: int) -> dict:
     import anthropic
 
     params = dict(

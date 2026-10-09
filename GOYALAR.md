@@ -25,8 +25,9 @@ har bosqich alohida ishlaydigan holatda tugaydi, keyin keyingisiga o'tamiz.
 - Jadval va diagramma slaydlari (raqamli mavzular uchun).
 - O'qituvchi uchun "Dars taqdimoti": dars maqsadi, savollar, uyga vazifa slaydlari.
 
-## 4-bosqich — Sayt (veb-versiya)
-- `taqdimot.uz` kabi domen. Telegram orqali kirish (Telegram Login Widget), shuning uchun balans bot bilan umumiy bo'ladi.
+## ✅ 4-bosqich — Sayt (asosiy qismi tayyor, `app/web.py` + `web/index.html`)
+- ✅ Telegram orqali kirish (bot tasdiqlaydi), balans bot bilan umumiy.
+- `taqdimot.uz` kabi o'z domeningizni Railway'ga ulash.
 - Sahifalar: bosh sahifa (skrinshotdagi "Nima tayyorlaymiz?" kabi), shablonlar galereyasi, "Mening ishlarim", balans.
 - Backend: FastAPI. `app/service.py` ni bot bilan birga ishlatadi, ya'ni AI va PPTX kodi bitta.
 - Brauzerda slaydlarni ko'rish (PDF preview) va yuklab olish.

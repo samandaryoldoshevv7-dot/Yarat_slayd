@@ -1,77 +1,93 @@
-# YaratSlayd — AI taqdimot boti
+# YaratSlayd — AI taqdimot boti va sayti
 
-Foydalanuvchi mavzuni yozadi, bot reja tuzadi (bepul). Foydalanuvchi dizaynni tanlaydi va
-**2 000 so'm** to'laydi, so'ng tayyor `.pptx` faylni oladi. Faylni PowerPoint, WPS yoki Google Slides'da tahrirlash mumkin.
+Foydalanuvchi mavzuni yozadi, AI reja tuzadi (bepul). Foydalanuvchi dizaynni tanlaydi va **2 000 so'm** to'laydi,
+so'ng tayyor `.pptx` faylni oladi. **Telegram bot** va **sayt** bitta serverda ishlaydi, balans ikkalasi uchun umumiy.
 
-## Hozir nima ishlaydi (1-bosqich)
+## Qanday ishlaydi (oddiy tilda)
 
-| Qism | Holat |
-|---|---|
-| Telegram bot: mavzu → til (uz/ru/en) → slaydlar soni (5–20) → dizayn → reja → to'lov → fayl | ✅ |
-| AI matn: Claude (avval reja, keyin to'liq matn) | ✅ |
-| 50 ta shablon, har biri uchun ko'rinish rasmi (`previews/`) | ✅ |
-| Slaydlarga rasm (Pexels, bepul fotobank) | ✅ |
-| Balans, yangi foydalanuvchiga 2 000 so'm bonus, do'st taklif qilganga +500 | ✅ |
-| Hisobni to'ldirish: karta orqali o'tkazma + chek, admin bir tugma bilan tasdiqlaydi | ✅ |
-| Xato bo'lsa pul avtomatik qaytadi | ✅ |
-| «Mening ishlarim»: eski fayllarni qayta yuklab olish | ✅ |
-| Admin: `/stats`, `/add <id> <summa>`, `/broadcast` (xabarga reply qilib) | ✅ |
-| Sayt (veb-versiya) | ⏳ 2-bosqich — [GOYALAR.md](GOYALAR.md) |
+```
+Foydalanuvchi ──► Telegram bot ─┐
+                                ├──► Sizning serveringiz (Railway) ──► Gemini (matn, BEPUL)
+Foydalanuvchi ──► Sayt ─────────┘         │                       └──► Pollinations (rasm, BEPUL)
+                                          └──► 50 ta shablon asosida .pptx yig'iladi
+```
 
-## Ishga tushirish
+- **Matnni** Google Gemini yozadi. Kalit bepul, kunlik limit bor.
+- **Rasmlarni** Pollinations chizadi. Bepul, kalit ham kerak emas.
+- **Faylni** serveringizdagi dastur shablon asosida yig'adi.
+- Kalit qo'yilmasa bot **DEMO rejimda** ishlaydi: hammasi ishlaydi, faqat slaydlarga namuna matn yoziladi.
+
+## Railway'ga joylash (qadamma-qadam)
+
+1. **Gemini kaliti (bepul):** https://aistudio.google.com/apikey → Google akkaunt bilan kiring → **Create API key** → nusxalang.
+2. **Bot tokeni:** Telegram'da @BotFather → `/newbot` → tokenni nusxalang.
+3. **Admin ID:** @userinfobot ga yozing, u sizning raqamingizni beradi.
+4. **Railway:** https://railway.com → **New Project** → **Deploy from GitHub repo** → `Yarat_slayd` ni tanlang.
+5. Servisni oching → **Variables** bo'limiga qo'shing:
+
+   | Nomi | Qiymati |
+   |---|---|
+   | `BOT_TOKEN` | BotFather bergan token |
+   | `GEMINI_API_KEY` | AI Studio bergan kalit |
+   | `ADMIN_IDS` | sizning Telegram ID'ingiz |
+   | `PAYMENT_CARD` | to'lov qabul qiladigan karta raqami |
+   | `PAYMENT_CARD_OWNER` | karta egasining ismi |
+
+6. **Ma'lumotlar o'chib ketmasligi uchun:** servis ustida o'ng tugma → **Attach Volume** → Mount path: `/app/data`.
+   Volume bo'lmasa, har yangilanishda balanslar va fayllar o'chadi.
+7. **Sayt manzili:** **Settings → Networking → Generate Domain**. `...up.railway.app` manzili beriladi, sayt shu yerda ochiladi.
+8. **Deploy** tugmasini bosing. **Deployments → View logs** bo'limida `Bot ishga tushdi: @...` va `AI: gemini` yozuvlari chiqishi kerak.
+
+Boshqa sozlamalar (narx, bonus, rasm manbasi) `.env.example` faylida izohlari bilan yozilgan.
+
+## Kompyuterda ishga tushirish
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env      # keyin .env ni to'ldiring
-python bot.py
+cp .env.example .env      # .env ni to'ldiring
+python main.py            # bot + sayt (http://localhost:8000)
+# yoki faqat bot: python bot.py
 ```
 
-### Kalitlarni qayerdan olish
+## Narxlar va xarajat
 
-1. **BOT_TOKEN**: Telegram'da @BotFather → `/newbot`.
-2. **ADMIN_IDS**: @userinfobot ga yozing, u sizning ID raqamingizni beradi.
-3. **ANTHROPIC_API_KEY** (AI matn): https://console.anthropic.com → Billing (karta bilan $5–10 to'ldiriladi) → API Keys.
-   Kalit bo'lmasa bot **DEMO rejimda** ishlaydi: hamma narsa ishlaydi, faqat slaydlarda namuna matn chiqadi.
-4. **PEXELS_API_KEY** (rasmlar, bepul): https://www.pexels.com/api/ → ro'yxatdan o'ting → kalitni nusxalang.
+| Xizmat | Narxi |
+|---|---|
+| Gemini (matn) | Bepul, lekin minutlik va kunlik limit bor (limitlarni AI Studio'da ko'rasiz). Limit yetmay qolsa billing yoqiladi, shunda bitta taqdimot ~100–200 so'm |
+| Pollinations (rasm) | Bepul |
+| Railway (server) | Bepul sinov krediti, keyin taxminan $5/oy |
+| Claude (ixtiyoriy, pullik) | Oldindan to'lanadigan balans, oylik obuna emas. Bitta taqdimot ~30–1 300 so'm (modelga qarab) |
 
-### AI xarajati (bitta taqdimot, taxminan)
+## Imkoniyatlar
 
-Bitta taqdimotga ~1 000 ta kirish va ~3 000–5 000 ta chiqish tokeni ketadi.
-
-| `CLAUDE_MODEL` | 1 ta taqdimot | 2 000 so'mdan qoladigan foyda |
-|---|---|---|
-| `claude-opus-5-5` (standart, eng sifatli) | ≈ $0.06–0.10 (≈ 800–1 300 so'm) | ≈ 700–1 200 so'm |
-| `claude-sonnet-5-5` | ≈ $0.03–0.05 (≈ 400–650 so'm) | ≈ 1 350–1 600 so'm |
-| `claude-haiku-5-5` (eng arzon) | ≈ $0.002–0.003 (≈ 30 so'm) | ≈ 1 970 so'm |
-
-Pexels rasmlari bepul. Maslahat: 10–20 ta sinov taqdimot yasab, `claude-haiku-5-5` matnining sifati
-sizni qoniqtirsa, shunga o'ting. Model nomini `.env` da almashtirish kifoya.
-
-### Ko'rinish rasmlarini qayta yaratish
-
-Shablon qo'shsangiz (`templates/template_51.pptx` kabi nomlang), ko'rinish rasmini qayta yarating:
-
-```bash
-sudo apt install libreoffice poppler-utils   # bir marta
-python scripts/make_previews.py
-```
+| Qism | Holat |
+|---|---|
+| Bot: mavzu → til → slaydlar soni → dizayn → bepul reja → to'lov → `.pptx` | ✅ |
+| Sayt: shu jarayon brauzerda, rejani tahrirlash, 50 ta dizayn galereyasi | ✅ |
+| Saytga Telegram orqali kirish (bot tasdiqlaydi), «Mening ishlarim» | ✅ |
+| Balans, 2 000 so'm sovg'a, do'st taklifi uchun +500 so'm | ✅ |
+| To'ldirish: karta + chek, admin bir tugma bilan tasdiqlaydi | ✅ |
+| Xato bo'lsa pul avtomatik qaytadi | ✅ |
+| Admin: `/stats`, `/add <id> <summa>`, `/broadcast` (xabarga reply qilib) | ✅ |
+| Click/Payme orqali avtomatik to'lov | ⏳ [GOYALAR.md](GOYALAR.md) |
 
 ## Tuzilishi
 
 ```
+main.py                Bot + sayt birga (Railway shuni ishga tushiradi)
 bot.py                 Telegram bot (aiogram 3)
-app/config.py          .env sozlamalari
-app/ai.py              Claude: reja va matn (DEMO rejim ham shu yerda)
-app/images.py          Rasmlar (Pexels)
+app/web.py             Sayt serveri (FastAPI)
+web/index.html         Sayt sahifasi
+app/ai.py              AI: Gemini / Claude / DEMO
+app/images.py          Rasmlar: Pollinations / Pexels
 app/pptx_builder.py    Shablon asosida .pptx yig'ish
 app/service.py         Umumiy generatsiya (bot va sayt uchun)
-app/db.py              SQLite: foydalanuvchilar, balans, buyurtmalar, to'lovlar
-app/templates.py       Shablonlar ro'yxati
+app/db.py              SQLite: foydalanuvchilar, balans, buyurtmalar, to'lovlar, sayt sessiyalari
 templates/             50 ta .pptx shablon
 previews/              Shablonlarning ko'rinish rasmlari
-web/old_frontend.html  Eski sayt (AI'siz, faqat namuna uchun saqlab qo'yildi)
+web/old_frontend.html  Eski sayt (AI'siz namuna, ishlatilmaydi)
 ```
 
-Serverga qo'yish: 1 GB RAM'li har qanday VPS yetadi (Hetzner, DigitalOcean, mahalliy hosting).
-`systemd` yoki `tmux` orqali `python bot.py` doimiy ishlab tursin.
+Yangi shablon qo'shsangiz (`templates/template_51.pptx`), ko'rinish rasmini qayta yarating
+(LibreOffice va poppler-utils kerak): `python scripts/make_previews.py`

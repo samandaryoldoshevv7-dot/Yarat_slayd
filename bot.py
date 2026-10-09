@@ -66,6 +66,11 @@ def som(amount: int) -> str:
 @router.message(CommandStart())
 async def start(msg: Message, command: CommandObject, state: FSMContext):
     await state.clear()
+    if command.args and command.args.startswith("weblogin_"):
+        db.register_user(msg.from_user.id, msg.from_user.username, msg.from_user.full_name, None)
+        if db.confirm_login(command.args[len("weblogin_"):], msg.from_user.id):
+            return await msg.answer("✅ Saytga kirdingiz! Brauzerga qayting — sahifa o'zi yangilanadi.", reply_markup=MAIN_KB)
+        return await msg.answer("⚠️ Kirish havolasi eskirgan. Saytda «Kirish» tugmasini qayta bosing.", reply_markup=MAIN_KB)
     ref = None
     if command.args and command.args.startswith("ref"):
         try:
@@ -486,18 +491,31 @@ async def fallback(msg: Message):
     await msg.answer("Menyudan tanlang 👇", reply_markup=MAIN_KB)
 
 
+async def run():
+    """Botni ishga tushiradi (main.py sayt bilan birga chaqiradi)."""
+    bot = Bot(config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+    me = await bot.get_me()
+    config.BOT_USERNAME = config.BOT_USERNAME or me.username
+    log.info("Bot ishga tushdi: @%s", me.username)
+    dp = Dispatcher(storage=MemoryStorage())
+    dp.include_router(router)
+    await dp.start_polling(bot, handle_signals=False)
+
+
+def log_setup_warnings():
+    if config.DEMO_MODE:
+        log.warning("DEMO rejim: GEMINI_API_KEY yo'q — slaydlarda namuna matn chiqadi.")
+    else:
+        log.info("AI: %s", config.AI_PROVIDER)
+    log.info("Rasmlar: %s", config.IMAGE_PROVIDER)
+
+
 async def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if not config.BOT_TOKEN:
         raise SystemExit("BOT_TOKEN topilmadi. .env faylini to'ldiring (.env.example ga qarang).")
-    if config.DEMO_MODE:
-        log.warning("DEMO rejim: ANTHROPIC_API_KEY yo'q — slaydlarda namuna matn chiqadi.")
-    if not config.PEXELS_API_KEY:
-        log.warning("PEXELS_API_KEY yo'q — slaydlar rasmsiz bo'ladi.")
-    bot = Bot(config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
-    dp = Dispatcher(storage=MemoryStorage())
-    dp.include_router(router)
-    await dp.start_polling(bot)
+    log_setup_warnings()
+    await run()
 
 
 if __name__ == "__main__":
