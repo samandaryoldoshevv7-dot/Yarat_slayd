@@ -329,6 +329,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pricing .right h3 { font-size: 22px; font-weight: 800; }
 .pricing .right p { color: var(--muted); margin: 8px 0 var(--s5); }
 
+.topup-amounts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--s4); }
+.topup-amounts .btn { --h: 42px; padding: 0 14px; }
+.msg .topup-amounts { margin: 10px 0 0; }
+
 /* ============ FAQ ============ */
 .faq-wrap { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--s7); }
 .faq details { border-bottom: 1px solid var(--line); }
@@ -842,7 +846,8 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
         </div>
         <div class="right">
           <h3>Balansni to'ldirish</h3>
-          <p>Balans Telegram botda to'ldiriladi va sayt bilan umumiy. Kartaga o'tkazma qilib, chekni botga yuborasiz.</p>
+          <p id="topupText">Balans Telegram botda to'ldiriladi va sayt bilan umumiy. Kartaga o'tkazma qilib, chekni botga yuborasiz.</p>
+          <div class="topup-amounts" id="topupAmounts" hidden></div>
           <a class="btn btn-secondary" id="botBtn" href="#" target="_blank" rel="noopener"><svg style="color:#2AABEE"><use href="#i-tg"/></svg>Telegram botni ochish</a>
         </div>
       </div>
@@ -1023,6 +1028,25 @@ async function login(btn) {
   }
 }
 function closeLogin() { clearInterval(loginTimer); $("loginModal").classList.remove("show"); }
+
+// ---------- Balansni to'ldirish (Click) ----------
+function topupButtons() {
+  return state.cfg.topup_amounts.map((a) => `<button type="button" class="btn btn-secondary" data-topup="${a}">${som(a)} so'm</button>`).join("");
+}
+async function payClick(btn) {
+  if (!state.me.logged_in) return login();
+  loading(btn, true);
+  try {
+    const { url } = await api("/api/click/invoice", { method: "POST", body: JSON.stringify({ amount: +btn.dataset.topup }) });
+    if (TG) TG.openLink(url); else location.href = url;
+    toast("To'lovdan so'ng balans avtomatik to'ladi.");
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    loading(btn, false);
+  }
+}
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-topup]"); if (b) payClick(b); });
 
 // ---------- Reja ----------
 function renderPlan() {
@@ -1205,8 +1229,9 @@ async function generate() {
   if (!state.me.logged_in) { state.pendingGenerate = true; return login(); }
   if (state.me.balance < state.cfg.price) {
     const url = botUrl();
-    setMsg(msg, `Balansda ${som(state.me.balance)} so'm bor, taqdimot narxi ${som(state.cfg.price)} so'm. ` +
-      (url ? `<a href="${url}" target="_blank" rel="noopener">Telegram botda balansni to'ldiring</a>, so'ng tugmani qayta bosing.` : "Balansni to'ldiring."));
+    const base = `Balansda ${som(state.me.balance)} so'm bor, taqdimot narxi ${som(state.cfg.price)} so'm. `;
+    if (state.cfg.click) setMsg(msg, base + "Click orqali to'ldiring — balans darhol tushadi, so'ng tugmani qayta bosing." + `<div class="topup-amounts">${topupButtons()}</div>`);
+    else setMsg(msg, base + (url ? `<a href="${url}" target="_blank" rel="noopener">Telegram botda balansni to'ldiring</a>, so'ng tugmani qayta bosing.` : "Balansni to'ldiring."));
     return refreshMe();
   }
   const btn = $("genBtn");
@@ -1276,6 +1301,11 @@ async function init() {
     $("bonusLine").hidden = false;
     $("bonusText").textContent = "Birinchi taqdimot sovg'a: kirganingizda balansga " + som(state.cfg.welcome_bonus) + " so'm qo'shiladi";
     $("heroNote").textContent = "Reja bepul, birinchi taqdimot — sovg'a";
+  }
+  if (state.cfg.click) {
+    $("topupText").textContent = "Click orqali to'lang — balans darhol avtomatik to'ladi. Balans Telegram bot bilan umumiy.";
+    $("topupAmounts").innerHTML = topupButtons();
+    $("topupAmounts").hidden = false;
   }
   const url = botUrl();
   ["botBtn", "botFooter", "topupLink"].forEach((id) => { if (url) $(id).href = url; else $(id).closest("li, a").hidden = true; });
@@ -1385,6 +1415,8 @@ document.querySelectorAll("[data-focus-topic]").forEach((a) => a.addEventListene
 $("tabSlides").addEventListener("click", () => setBA(true));
 $("tabPlain").addEventListener("click", () => setBA(false));
 $("tabPlain").parentElement.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { const toSlides = e.key === "ArrowRight"; setBA(toSlides); (toSlides ? $("tabSlides") : $("tabPlain")).focus(); } });
+// Click'dan qaytganda yoki boshqa oynadan kelganda balansni yangilash
+document.addEventListener("visibilitychange", () => { if (!document.hidden && state.me.logged_in) refreshMe(); });
 addEventListener("scroll", () => $("siteHeader").classList.toggle("scrolled", scrollY > 8), { passive: true });
 
 // Scroll paytida yengil paydo bo'lish

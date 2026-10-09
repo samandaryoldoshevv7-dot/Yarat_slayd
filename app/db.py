@@ -38,6 +38,15 @@ CREATE TABLE IF NOT EXISTS web_sessions (
     user_id INTEGER NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS click_invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    amount INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new',
+    click_trans_id TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    paid_at TEXT
+);
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -224,3 +233,46 @@ def delete_session(token: str) -> None:
 def get_order(order_id: int):
     with tx() as c:
         return c.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+
+
+# ---------------- Click hisob-fakturalari ----------------
+
+def create_click_invoice(user_id: int, amount: int) -> int:
+    with tx() as c:
+        return c.execute("INSERT INTO click_invoices (user_id, amount) VALUES (?,?)", (user_id, amount)).lastrowid
+
+
+def get_click_invoice(invoice_id: int):
+    with tx() as c:
+        return c.execute("SELECT * FROM click_invoices WHERE id=?", (invoice_id,)).fetchone()
+
+
+def prepare_click_invoice(invoice_id: int, click_trans_id: str) -> None:
+    with tx() as c:
+        c.execute(
+            "UPDATE click_invoices SET status='prepared', click_trans_id=? WHERE id=? AND status IN ('new','prepared')",
+            (click_trans_id, invoice_id),
+        )
+
+
+def complete_click_invoice(invoice_id: int) -> bool:
+    """Bir marta to'langan deb belgilaydi va balansni to'ldiradi. Allaqachon to'langan bo'lsa False."""
+    with tx() as c:
+        cur = c.execute(
+            "UPDATE click_invoices SET status='paid', paid_at=CURRENT_TIMESTAMP WHERE id=? AND status='prepared'",
+            (invoice_id,),
+        )
+        if cur.rowcount != 1:
+            return False
+        row = c.execute("SELECT user_id, amount FROM click_invoices WHERE id=?", (invoice_id,)).fetchone()
+        c.execute("UPDATE users SET balance = balance + ? WHERE id=?", (row["amount"], row["user_id"]))
+        c.execute(
+            "INSERT INTO payments (user_id, amount, status, photo_file_id) VALUES (?,?,'approved',?)",
+            (row["user_id"], row["amount"], f"click:{invoice_id}"),
+        )
+        return True
+
+
+def cancel_click_invoice(invoice_id: int) -> None:
+    with tx() as c:
+        c.execute("UPDATE click_invoices SET status='cancelled' WHERE id=? AND status != 'paid'", (invoice_id,))

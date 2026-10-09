@@ -16,10 +16,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import ai, config, db, notify, service, templates, tg_auth
+from . import ai, click, config, db, notify, service, templates, tg_auth
 
 log = logging.getLogger("web")
 app = FastAPI(title="YaratSlayd", docs_url=None, redoc_url=None)
+app.include_router(click.router)
 WEB_DIR = config.ROOT / "web"
 COOKIE = "ys_session"
 
@@ -96,6 +97,8 @@ def get_config():
     return {
         "price": config.PRICE_PRESENTATION,
         "welcome_bonus": config.WELCOME_BONUS,
+        "click": config.CLICK_ENABLED,
+        "topup_amounts": config.TOPUP_AMOUNTS,
         "bot": config.BOT_USERNAME,
         "demo": config.DEMO_MODE,
         "min_slides": config.MIN_SLIDES,
@@ -167,6 +170,20 @@ def logout(request: Request, response: Response):
         db.delete_session(token)
     response.delete_cookie(COOKIE)
     return {"ok": True}
+
+
+class TopupIn(BaseModel):
+    amount: int
+
+
+@app.post("/api/click/invoice")
+def click_invoice(body: TopupIn, request: Request):
+    uid = require_user(request)
+    if not config.CLICK_ENABLED:
+        raise HTTPException(503, "Click orqali to'lov hali ulanmagan. Balansni Telegram botda to'ldiring.")
+    if body.amount not in config.TOPUP_AMOUNTS:
+        raise HTTPException(400, "Noto'g'ri summa")
+    return {"url": click.create_payment(uid, body.amount)}
 
 
 @app.post("/api/plan")

@@ -21,7 +21,7 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from app import ai, config, db, notify, service, templates
+from app import ai, click, config, db, notify, service, templates
 
 log = logging.getLogger("bot")
 router = Router()
@@ -190,6 +190,37 @@ async def open_site(msg: Message):
 
 @router.callback_query(F.data == "topup")
 async def topup(cb: CallbackQuery, state: FSMContext):
+    if config.CLICK_ENABLED:
+        kb = InlineKeyboardBuilder()
+        for a in config.TOPUP_AMOUNTS:
+            kb.button(text=som(a), callback_data=f"click:{a}")
+        kb.button(text="💳 Karta orqali (chek bilan)", callback_data="topup_card")
+        kb.adjust(3, 2, 1)
+        await cb.message.answer(
+            "💰 Qancha summaga to'ldirasiz?\nClick orqali to'lasangiz balans <b>darhol avtomatik</b> to'ladi.",
+            reply_markup=kb.as_markup(),
+        )
+        return await cb.answer()
+    await topup_card(cb, state)
+
+
+@router.callback_query(F.data.startswith("click:"))
+async def topup_click(cb: CallbackQuery):
+    amount = int(cb.data.split(":")[1])
+    if not config.CLICK_ENABLED or amount not in config.TOPUP_AMOUNTS:
+        return await cb.answer("Click hozircha mavjud emas", show_alert=True)
+    ensure_user(cb.from_user)
+    kb = InlineKeyboardBuilder()
+    kb.button(text=f"Click orqali {som(amount)} to'lash", url=click.create_payment(cb.from_user.id, amount))
+    await cb.message.answer(
+        "Tugmani bosing va Click'da to'lovni tasdiqlang. To'lov o'tishi bilan bot sizga xabar beradi.",
+        reply_markup=kb.as_markup(),
+    )
+    await cb.answer()
+
+
+@router.callback_query(F.data == "topup_card")
+async def topup_card(cb: CallbackQuery, state: FSMContext):
     if await state.get_state() == Create.working.state:
         return await cb.answer("Taqdimot tayyorlanmoqda, biroz kuting", show_alert=True)
     # Reja ma'lumotlari saqlanib qoladi — to'ldirgach «Tayyorlash» ni qayta bosish mumkin

@@ -50,6 +50,13 @@ PRICE_PRESENTATION = int(os.getenv("PRICE_PRESENTATION", "2000"))
 WELCOME_BONUS = int(os.getenv("WELCOME_BONUS", "2000"))
 REFERRAL_BONUS = int(os.getenv("REFERRAL_BONUS", "500"))
 
+# Click orqali avtomatik to'lov (Click merchant kabinetidan olinadi). Bo'sh bo'lsa o'chiq.
+CLICK_SERVICE_ID = os.getenv("CLICK_SERVICE_ID", "")
+CLICK_MERCHANT_ID = os.getenv("CLICK_MERCHANT_ID", "")
+CLICK_SECRET_KEY = os.getenv("CLICK_SECRET_KEY", "")
+CLICK_ENABLED = bool(CLICK_SERVICE_ID and CLICK_MERCHANT_ID and CLICK_SECRET_KEY)
+TOPUP_AMOUNTS = [2000, 5000, 10000, 20000, 50000]
+
 # Qo'lda to'lov: foydalanuvchi shu kartaga o'tkazib, chekni yuboradi
 PAYMENT_CARD = os.getenv("PAYMENT_CARD", "8600 0000 0000 0000")
 PAYMENT_CARD_OWNER = os.getenv("PAYMENT_CARD_OWNER", "Ism Familiya")
