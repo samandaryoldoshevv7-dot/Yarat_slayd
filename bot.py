@@ -2,7 +2,6 @@
 import asyncio
 import logging
 import random
-import secrets
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -15,12 +14,14 @@ from aiogram.types import (
     FSInputFile,
     InputMediaPhoto,
     KeyboardButton,
+    MenuButtonWebApp,
     Message,
     ReplyKeyboardMarkup,
+    WebAppInfo,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from app import ai, config, db, notify, service, templates
+from app import ai, click, config, db, notify, service, templates
 
 log = logging.getLogger("bot")
 router = Router()
@@ -37,6 +38,8 @@ MAIN_KB = ReplyKeyboardMarkup(
         [KeyboardButton(text=BTN_CREATE)],
         [KeyboardButton(text=BTN_BALANCE), KeyboardButton(text=BTN_FILES)],
         [KeyboardButton(text=BTN_INVITE), KeyboardButton(text=BTN_HELP)],
+        # Oddiy tugma: javobida Mini App tugmasi keladi (klaviatura tugmasidan ochilgan
+        # Mini App foydalanuvchi ma'lumotini olmaydi, shuning uchun inline tugma ishlatiladi)
         [KeyboardButton(text=BTN_SITE)],
     ],
     resize_keyboard=True,
@@ -174,15 +177,11 @@ async def open_site(msg: Message):
     if not config.SITE_URL:
         return await msg.answer("Sayt hali ulanmagan.")
     ensure_user(msg.from_user)
-    # Bir martalik havola: saytga avtomatik kirasiz, balans va ishlar bot bilan umumiy
-    token = secrets.token_urlsafe(18)
-    db.create_login(token)
-    db.confirm_login(token, msg.from_user.id)
     kb = InlineKeyboardBuilder()
-    kb.button(text="🌐 Saytni ochish", url=f"{config.SITE_URL}/?login={token}")
+    kb.button(text="🌐 Saytni ochish", web_app=WebAppInfo(url=config.SITE_URL))
     await msg.answer(
-        "Saytda ham xuddi shu balans va taqdimotlaringiz bor. Saytda rejani tahrirlash va "
-        "50 ta dizaynni katta ko'rinishda tanlash qulayroq.\nHavola 15 daqiqa amal qiladi.",
+        "Sayt Telegram ichida ochiladi va sizni avtomatik taniydi: balans va taqdimotlaringiz umumiy. "
+        "U yerda rejani tahrirlash va 50 ta dizaynni katta ko'rinishda tanlash qulayroq.",
         reply_markup=kb.as_markup(),
     )
 
@@ -191,6 +190,37 @@ async def open_site(msg: Message):
 
 @router.callback_query(F.data == "topup")
 async def topup(cb: CallbackQuery, state: FSMContext):
+    if config.CLICK_ENABLED:
+        kb = InlineKeyboardBuilder()
+        for a in config.TOPUP_AMOUNTS:
+            kb.button(text=som(a), callback_data=f"click:{a}")
+        kb.button(text="💳 Karta orqali (chek bilan)", callback_data="topup_card")
+        kb.adjust(3, 2, 1)
+        await cb.message.answer(
+            "💰 Qancha summaga to'ldirasiz?\nClick orqali to'lasangiz balans <b>darhol avtomatik</b> to'ladi.",
+            reply_markup=kb.as_markup(),
+        )
+        return await cb.answer()
+    await topup_card(cb, state)
+
+
+@router.callback_query(F.data.startswith("click:"))
+async def topup_click(cb: CallbackQuery):
+    amount = int(cb.data.split(":")[1])
+    if not config.CLICK_ENABLED or amount not in config.TOPUP_AMOUNTS:
+        return await cb.answer("Click hozircha mavjud emas", show_alert=True)
+    ensure_user(cb.from_user)
+    kb = InlineKeyboardBuilder()
+    kb.button(text=f"Click orqali {som(amount)} to'lash", url=click.create_payment(cb.from_user.id, amount))
+    await cb.message.answer(
+        "Tugmani bosing va Click'da to'lovni tasdiqlang. To'lov o'tishi bilan bot sizga xabar beradi.",
+        reply_markup=kb.as_markup(),
+    )
+    await cb.answer()
+
+
+@router.callback_query(F.data == "topup_card")
+async def topup_card(cb: CallbackQuery, state: FSMContext):
     if await state.get_state() == Create.working.state:
         return await cb.answer("Taqdimot tayyorlanmoqda, biroz kuting", show_alert=True)
     # Reja ma'lumotlari saqlanib qoladi — to'ldirgach «Tayyorlash» ni qayta bosish mumkin
@@ -524,6 +554,15 @@ async def run():
     notify.bot = bot
     config.BOT_USERNAME = config.BOT_USERNAME or me.username
     log.info("Bot ishga tushdi: @%s", me.username)
+    if config.SITE_URL:
+        # Chat pastidagi menyu tugmasi saytni Mini App sifatida ochadi
+        try:
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(text="Saytni ochish", web_app=WebAppInfo(url=config.SITE_URL))
+            )
+            log.info("Mini App tugmasi: %s", config.SITE_URL)
+        except Exception:
+            log.exception("Menyu tugmasini o'rnatib bo'lmadi")
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
     await dp.start_polling(bot, handle_signals=False)

@@ -44,6 +44,31 @@ Foydalanuvchi ──► Sayt ─────────┘         │         
 
 Boshqa sozlamalar (narx, bonus, rasm manbasi) `.env.example` faylida izohlari bilan yozilgan.
 
+## Telegram Mini App (bot ichida sayt)
+
+Bot ishga tushganda chat pastidagi **menyu tugmasini** «Saytni ochish» qilib o'rnatadi.
+Tugma saytni Telegram ichida ochadi va foydalanuvchini **avtomatik taniydi**: parol ham, kirish havolasi ham kerak emas.
+Buning uchun sayt manzili ma'lum bo'lishi kifoya. Railway'da u `RAILWAY_PUBLIC_DOMAIN` orqali o'zi aniqlanadi.
+
+Ishga tushgach tekshirish:
+1. Botga `/start` yozing. Chat pastida (xabar yozish joyining chap tomonida) «Saytni ochish» tugmasi paydo bo'lishi kerak.
+   Ko'rinmasa, Telegram'ni yopib qayta oching.
+2. Tugmani bosing: sayt ochiladi, yuqorida ismingiz va balansingiz chiqadi.
+3. Saytda taqdimot yarating. Fayl ham saytda yuklanadi, ham bot chatiga keladi.
+
+## Click orqali avtomatik to'lov
+
+Kod tayyor, faqat Click kalitlari kerak:
+1. Click bilan shartnoma tuzing (YaTT yoki MChJ kerak): https://click.uz → «Biznes uchun» → onlayn to'lov qabul qilish.
+2. Merchant kabinetida servis yarating va quyidagi manzillarni kiriting:
+   - **Prepare URL:** `https://<sayt>/click/prepare`
+   - **Complete URL:** `https://<sayt>/click/complete`
+3. Kabinetdagi `service_id`, `merchant_id` va `secret_key` qiymatlarini Railway Variables'ga
+   `CLICK_SERVICE_ID`, `CLICK_MERCHANT_ID`, `CLICK_SECRET_KEY` nomlari bilan qo'shing.
+
+Shundan so'ng botda «Hisobni to'ldirish» va saytdagi narx bo'limida summa tugmalari chiqadi.
+To'lov o'tishi bilan balans avtomatik to'ladi va bot xabar yuboradi. Karta + chek usuli zaxira sifatida qoladi.
+
 ## Kompyuterda ishga tushirish
 
 ```bash
@@ -75,7 +100,9 @@ python main.py            # bot + sayt (http://localhost:8000)
 | To'ldirish: karta + chek, admin bir tugma bilan tasdiqlaydi | ✅ |
 | Xato bo'lsa pul avtomatik qaytadi | ✅ |
 | Admin: `/stats`, `/add <id> <summa>`, `/broadcast` (xabarga reply qilib) | ✅ |
-| Click/Payme orqali avtomatik to'lov | ⏳ [GOYALAR.md](GOYALAR.md) |
+| Telegram Mini App: bot menyusidan sayt, avtomatik kirish | ✅ |
+| Click orqali avtomatik to'lov (kalitlar qo'yilgach yoqiladi) | ✅ |
+| Payme | ⏳ [GOYALAR.md](GOYALAR.md) |
 
 ## Tuzilishi
 

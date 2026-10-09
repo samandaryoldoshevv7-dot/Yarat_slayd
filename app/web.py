@@ -9,16 +9,18 @@ import secrets
 import time
 from collections import defaultdict, deque
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import ai, config, db, notify, service, templates
+from . import ai, click, config, db, notify, service, templates, tg_auth
 
 log = logging.getLogger("web")
 app = FastAPI(title="YaratSlayd", docs_url=None, redoc_url=None)
+app.include_router(click.router)
 WEB_DIR = config.ROOT / "web"
 COOKIE = "ys_session"
 
@@ -29,6 +31,17 @@ _tasks: set[asyncio.Task] = set()  # create_task natijasi GC tomonidan yo'qolmas
 # Ro'yxatdan o'tmaganlar uchun reja limiti (bepul AI limitini himoya qiladi)
 _plan_hits: dict[str, deque] = defaultdict(deque)
 PLAN_LIMIT_PER_HOUR = 15
+
+
+@app.middleware("http")
+async def same_origin_only(request: Request, call_next):
+    """Boshqa saytdan yuborilgan POST so'rovlarni rad etadi (cookie SameSite=None bo'lgani uchun)."""
+    if request.method not in ("GET", "HEAD", "OPTIONS") and request.url.path.startswith("/api/"):
+        origin = request.headers.get("origin")
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+        if origin and urlparse(origin).netloc != host:
+            return JSONResponse({"detail": "Ruxsat yo'q"}, status_code=403)
+    return await call_next(request)
 
 
 def _rate_ok(key: str) -> bool:
@@ -42,8 +55,14 @@ def _rate_ok(key: str) -> bool:
     return True
 
 
+def session_token(request: Request) -> str | None:
+    # Cookie (oddiy brauzer), X-Session sarlavhasi (Telegram ichida cookie bloklanishi mumkin)
+    # yoki ?s= (Telegram ichida fayl yuklab olish havolasi)
+    return request.cookies.get(COOKIE) or request.headers.get("x-session") or request.query_params.get("s")
+
+
 def current_user(request: Request) -> int | None:
-    token = request.cookies.get(COOKIE)
+    token = session_token(request)
     return db.session_user(token) if token else None
 
 
@@ -78,6 +97,8 @@ def get_config():
     return {
         "price": config.PRICE_PRESENTATION,
         "welcome_bonus": config.WELCOME_BONUS,
+        "click": config.CLICK_ENABLED,
+        "topup_amounts": config.TOPUP_AMOUNTS,
         "bot": config.BOT_USERNAME,
         "demo": config.DEMO_MODE,
         "min_slides": config.MIN_SLIDES,
@@ -108,26 +129,61 @@ def login_start():
     return {"token": token, "url": f"https://t.me/{config.BOT_USERNAME}?start=weblogin_{token}"}
 
 
+def _start_session(uid: int, request: Request, response: Response) -> str:
+    session = secrets.token_urlsafe(32)
+    db.create_session(session, uid)
+    https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    # Telegram Desktop/Web Mini App'ni iframe ichida ochadi — u yerda cookie faqat SameSite=None bilan ishlaydi
+    response.set_cookie(
+        COOKIE, session, max_age=30 * 24 * 3600, httponly=True,
+        samesite="none" if https else "lax", secure=https,
+    )
+    return session
+
+
 @app.get("/api/login/check")
 def login_check(token: str, request: Request, response: Response):
     uid = db.take_login(token)
     if uid is None:
         return {"ok": False}
-    session = secrets.token_urlsafe(32)
-    db.create_session(session, uid)
-    response.set_cookie(
-        COOKIE, session, max_age=30 * 24 * 3600, httponly=True, samesite="lax",
-        secure=request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https",
-    )
-    return {"ok": True}
+    return {"ok": True, "session": _start_session(uid, request, response)}
+
+
+class TelegramLoginIn(BaseModel):
+    init_data: str = Field(max_length=4096)
+
+
+@app.post("/api/login/telegram")
+def login_telegram(body: TelegramLoginIn, request: Request, response: Response):
+    """Bot menyusidagi Mini App: Telegram imzolagan initData orqali avtomatik kirish."""
+    user = tg_auth.validate_init_data(body.init_data, config.BOT_TOKEN)
+    if user is None:
+        raise HTTPException(401, "Telegram ma'lumotlari tasdiqlanmadi. Mini App'ni botdan qayta oching.")
+    name = " ".join(x for x in (user.get("first_name"), user.get("last_name")) if x) or "Foydalanuvchi"
+    db.register_user(user["id"], user.get("username"), name, None)
+    return {"ok": True, "session": _start_session(user["id"], request, response)}
 
 
 @app.post("/api/logout")
 def logout(request: Request, response: Response):
-    if token := request.cookies.get(COOKIE):
+    if token := session_token(request):
         db.delete_session(token)
     response.delete_cookie(COOKIE)
     return {"ok": True}
+
+
+class TopupIn(BaseModel):
+    amount: int
+
+
+@app.post("/api/click/invoice")
+def click_invoice(body: TopupIn, request: Request):
+    uid = require_user(request)
+    if not config.CLICK_ENABLED:
+        raise HTTPException(503, "Click orqali to'lov hali ulanmagan. Balansni Telegram botda to'ldiring.")
+    if body.amount not in config.TOPUP_AMOUNTS:
+        raise HTTPException(400, "Noto'g'ri summa")
+    return {"url": click.create_payment(uid, body.amount)}
 
 
 @app.post("/api/plan")
