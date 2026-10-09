@@ -1089,7 +1089,7 @@ async function makePlan(btn) {
     renderPlan();
     $("studio").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
-    setMsg($("planMsg"), esc(e.message) + (e.status === 429 ? "" : " Qayta urinib ko'ring."));
+    setMsg($("planMsg"), esc(e.message));
   } finally {
     loading(btn, false);
   }

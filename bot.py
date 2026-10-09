@@ -497,6 +497,52 @@ async def busy(msg: Message):
 
 # ---------------- Admin ----------------
 
+@router.message(Command("myid"))
+async def my_id(msg: Message):
+    await msg.answer(f"Sizning Telegram ID: <code>{msg.from_user.id}</code>")
+
+
+@router.message(Command("admin"))
+async def admin_menu(msg: Message):
+    if msg.from_user.id not in config.ADMIN_IDS:
+        return await msg.answer(
+            f"Siz admin emassiz.\nSizning ID: <code>{msg.from_user.id}</code>\n\n"
+            "Admin bo'lish uchun Railway → Variables → <b>ADMIN_IDS</b> ga shu raqamni yozing va qayta deploy qiling."
+        )
+    kb = InlineKeyboardBuilder()
+    if config.SITE_URL:
+        kb.button(text="🛠 Admin panelni ochish", web_app=WebAppInfo(url=f"{config.SITE_URL}/admin"))
+    kb.button(text="📊 Statistika", callback_data="adm:stats")
+    kb.button(text="🤖 AI ishlayaptimi?", callback_data="adm:ai")
+    kb.adjust(1)
+    await msg.answer(
+        "🛠 <b>Admin</b>\n/add &lt;id&gt; &lt;summa&gt; — balansni o'zgartirish\n"
+        "/broadcast — xabarga reply qilib hammaga yuborish",
+        reply_markup=kb.as_markup(),
+    )
+
+
+@router.callback_query(F.data.startswith("adm:"), F.from_user.id.in_(config.ADMIN_IDS))
+async def admin_actions(cb: CallbackQuery):
+    if cb.data == "adm:stats":
+        s = db.admin_stats()
+        await cb.message.answer(
+            f"👤 Foydalanuvchilar: {s['users']} (bugun +{s['users_today']})\n"
+            f"📊 Taqdimotlar: {s['orders']} (bugun {s['orders_today']}, xato {s['failed_today']})\n"
+            f"💵 Tushum: {som(s['revenue'])}\n⏳ Kutilayotgan chek: {s['pending_payments']}"
+        )
+    else:
+        await cb.answer("Tekshirilmoqda...")
+        r = await ai.health_check()
+        if r["ok"]:
+            text = f"✅ AI ishlayapti ({r['provider']}, {r['seconds']} s)"
+        else:
+            last = r.get("last_error") or {}
+            text = (f"❌ AI ishlamadi: {r['error']}\nSabab: {last.get('model', '-')} → {last.get('status', '-')}\n"
+                    f"<code>{(last.get('message') or '')[:400]}</code>")
+        await cb.message.answer(text)
+    await cb.answer()
+
 @router.message(Command("stats"), F.from_user.id.in_(config.ADMIN_IDS))
 async def admin_stats(msg: Message):
     s = db.stats()
@@ -569,6 +615,8 @@ async def run():
 
 
 def log_setup_warnings():
+    if not config.ADMIN_IDS:
+        log.warning("ADMIN_IDS bo'sh — admin buyruqlari ishlamaydi. Botga /myid yozib ID'ingizni bilib oling.")
     if config.DEMO_MODE:
         log.warning("DEMO rejim: GEMINI_API_KEY yo'q — slaydlarda namuna matn chiqadi.")
     else:

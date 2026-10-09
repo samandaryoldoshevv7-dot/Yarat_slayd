@@ -20,16 +20,21 @@ def _load_dotenv() -> None:
 _load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-ADMIN_IDS = {int(x) for x in os.getenv("ADMIN_IDS", "").replace(" ", "").split(",") if x}
+# Faqat raqamlar olinadi ("123, 456" yoki "123 456"); noto'g'ri yozuv dasturni to'xtatmaydi
+ADMIN_IDS = {int(x) for x in os.getenv("ADMIN_IDS", "").replace(",", " ").replace(";", " ").split()
+             if x.strip().lstrip("-").isdigit()}
 
 # AI matn. AI_PROVIDER: gemini (bepul), claude yoki demo.
 # Bo'sh qolsa: GEMINI_API_KEY bo'lsa gemini, ANTHROPIC_API_KEY bo'lsa claude, aks holda demo.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Ixtiyoriy bepul zaxira: https://console.groq.com/keys (Gemini limiti tugasa ishlatiladi)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
 AI_PROVIDER = os.getenv("AI_PROVIDER", "").lower() or (
-    "gemini" if GEMINI_API_KEY else "claude" if ANTHROPIC_API_KEY else "demo"
+    "gemini" if GEMINI_API_KEY or GROQ_API_KEY else "claude" if ANTHROPIC_API_KEY else "demo"
 )
 DEMO_MODE = AI_PROVIDER == "demo"
 

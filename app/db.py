@@ -276,3 +276,50 @@ def complete_click_invoice(invoice_id: int) -> bool:
 def cancel_click_invoice(invoice_id: int) -> None:
     with tx() as c:
         c.execute("UPDATE click_invoices SET status='cancelled' WHERE id=? AND status != 'paid'", (invoice_id,))
+
+
+# ---------------- Admin panel ----------------
+
+def admin_stats() -> dict:
+    with tx() as c:
+        one = lambda q: c.execute(q).fetchone()[0]  # noqa: E731
+        return {
+            "users": one("SELECT COUNT(*) FROM users"),
+            "users_today": one("SELECT COUNT(*) FROM users WHERE date(created_at)=date('now')"),
+            "orders": one("SELECT COUNT(*) FROM orders WHERE status='done'"),
+            "orders_today": one("SELECT COUNT(*) FROM orders WHERE status='done' AND date(created_at)=date('now')"),
+            "failed_today": one("SELECT COUNT(*) FROM orders WHERE status='failed' AND date(created_at)=date('now')"),
+            "revenue": one("SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='approved'"),
+            "pending_payments": one("SELECT COUNT(*) FROM payments WHERE status='pending'"),
+            "balance_total": one("SELECT COALESCE(SUM(balance),0) FROM users"),
+        }
+
+
+def pending_payments():
+    with tx() as c:
+        return c.execute(
+            "SELECT p.*, u.full_name, u.username FROM payments p LEFT JOIN users u ON u.id=p.user_id "
+            "WHERE p.status='pending' ORDER BY p.id"
+        ).fetchall()
+
+
+def get_payment(payment_id: int):
+    with tx() as c:
+        return c.execute("SELECT * FROM payments WHERE id=?", (payment_id,)).fetchone()
+
+
+def list_users(q: str = "", limit: int = 50):
+    with tx() as c:
+        if q:
+            like = f"%{q.lstrip('@')}%"
+            return c.execute(
+                "SELECT * FROM users WHERE CAST(id AS TEXT) LIKE ? OR username LIKE ? OR full_name LIKE ? "
+                "ORDER BY created_at DESC LIMIT ?", (like, like, like, limit)).fetchall()
+        return c.execute("SELECT * FROM users ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+
+
+def recent_orders(limit: int = 50):
+    with tx() as c:
+        return c.execute(
+            "SELECT o.*, u.full_name, u.username FROM orders o LEFT JOIN users u ON u.id=o.user_id "
+            "ORDER BY o.id DESC LIMIT ?", (limit,)).fetchall()

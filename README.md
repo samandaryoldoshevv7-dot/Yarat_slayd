@@ -44,6 +44,13 @@ Foydalanuvchi ──► Sayt ─────────┘         │         
 
 Boshqa sozlamalar (narx, bonus, rasm manbasi) `.env.example` faylida izohlari bilan yozilgan.
 
+## Admin panel
+
+- Botda `/admin` buyrug'i: statistika, «AI ishlayaptimi?» tekshiruvi va admin panelni ochish tugmasi.
+- Saytda: `https://<sayt>/admin`. Unda tizim holati (AI kaliti, bot, Volume, Click), chek to'lovlarini
+  tasdiqlash, foydalanuvchilar balansini o'zgartirish va oxirgi buyurtmalar bor.
+- Admin bo'lish uchun botga `/myid` yozing va chiqqan raqamni Railway Variables'da `ADMIN_IDS` ga qo'ying.
+
 ## Telegram Mini App (bot ichida sayt)
 
 Bot ishga tushganda chat pastidagi **menyu tugmasini** «Saytni ochish» qilib o'rnatadi.

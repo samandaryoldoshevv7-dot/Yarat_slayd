@@ -6,6 +6,7 @@ Provayder config.AI_PROVIDER bo'yicha tanlanadi:
 import asyncio
 import json
 import logging
+import time
 
 import aiohttp
 
@@ -80,15 +81,34 @@ def _get_client():
     return _client
 
 
+# Oxirgi AI xatosi — admin paneldagi "AI tekshiruvi" uchun
+last_error: dict = {}
+
+
+def _remember(provider: str, model: str, status, message: str) -> None:
+    last_error.update(provider=provider, model=model, status=status, message=message[:500],
+                      time=time.strftime("%Y-%m-%d %H:%M:%S"))
+
+
 async def _ask_json(prompt: str, schema: dict, max_tokens: int) -> dict:
-    if config.AI_PROVIDER == "gemini":
+    if config.AI_PROVIDER == "claude":
+        return await _ask_claude(prompt, schema, max_tokens)
+    try:
         return await _ask_gemini(prompt, schema, max_tokens)
-    return await _ask_claude(prompt, schema, max_tokens)
+    except AIError:
+        # Gemini bepul limiti tugasa — Groq (bepul) zaxira sifatida
+        if config.GROQ_API_KEY:
+            log.warning("Gemini ishlamadi, Groq'ga o'tilmoqda")
+            return await _ask_groq(prompt, schema, max_tokens)
+        raise
 
 
 # ---------------- Gemini (REST) ----------------
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+# Bitta model limiti tugasa yoki ishlamasa, keyingisi sinaladi (har birining bepul limiti alohida)
+GEMINI_FALLBACKS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest",
+                    "gemini-flash-lite-latest", "gemini-2.0-flash"]
 
 
 def _gemini_schema(schema: dict) -> dict:
@@ -104,6 +124,8 @@ def _gemini_schema(schema: dict) -> dict:
 
 
 async def _ask_gemini(prompt: str, schema: dict, max_tokens: int) -> dict:
+    if not config.GEMINI_API_KEY:
+        raise AIError("GEMINI_API_KEY qo'yilmagan")
     body = {
         "systemInstruction": {"parts": [{"text": SYSTEM}]},
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -115,41 +137,93 @@ async def _ask_gemini(prompt: str, schema: dict, max_tokens: int) -> dict:
             "temperature": 0.7,
         },
     }
-    models = [config.GEMINI_MODEL] + [m for m in ("gemini-flash-latest",) if m != config.GEMINI_MODEL]
-    timeout = aiohttp.ClientTimeout(total=180)
-    last_error = "AI xatosi"
+    models = list(dict.fromkeys([config.GEMINI_MODEL] + GEMINI_FALLBACKS))
+    timeout = aiohttp.ClientTimeout(total=120)
+    user_error = "AI hozir javob bermayapti. Bir daqiqadan so'ng qayta urinib ko'ring."
     async with aiohttp.ClientSession(timeout=timeout) as session:
         for model in models:
-            for attempt in range(3):
+            for attempt in range(2):
                 try:
                     async with session.post(
-                        GEMINI_URL.format(model=model),
-                        params={"key": config.GEMINI_API_KEY},
-                        json=body,
+                        GEMINI_URL.format(model=model), params={"key": config.GEMINI_API_KEY}, json=body
                     ) as r:
                         data = await r.json(content_type=None)
                         status = r.status
                 except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                    log.warning("Gemini ulanish xatosi: %s", e)
-                    last_error = "AI serveriga ulanib bo'lmadi"
-                    await asyncio.sleep(2 * (attempt + 1))
+                    _remember("gemini", model, "network", str(e) or type(e).__name__)
+                    log.warning("Gemini ulanish xatosi (%s): %s", model, e)
+                    await asyncio.sleep(2)
                     continue
                 if status == 200:
-                    return _parse_gemini(data)
-                msg = (data.get("error") or {}).get("message", "") if isinstance(data, dict) else ""
+                    try:
+                        return _parse_gemini(data)
+                    except AIError as e:
+                        _remember("gemini", model, 200, str(e))
+                        log.warning("Gemini javobi yaroqsiz (%s): %s", model, e)
+                        break  # keyingi model
+                msg = (data.get("error") or {}).get("message", "") if isinstance(data, dict) else str(data)[:300]
+                _remember("gemini", model, status, msg)
                 log.warning("Gemini %s (%s): %s", status, model, msg[:300])
-                if status == 404:  # model nomi eskirgan — keyingisini sinaymiz
-                    break
-                if status in (429, 500, 502, 503, 504):
-                    last_error = "AI hozir band (bepul limit), birozdan so'ng urinib ko'ring"
-                    await asyncio.sleep(3 * (attempt + 1))
-                    continue
                 if status in (401, 403) or "API key" in msg or "API_KEY" in msg:
-                    raise AIError("Gemini kaliti noto'g'ri yoki ruxsat yo'q (GEMINI_API_KEY ni tekshiring)")
-                if status == 400:
-                    raise AIError(f"AI so'rovi qabul qilinmadi: {msg[:150]}")
-                raise AIError(f"AI xatosi ({status})")
-    raise AIError(last_error)
+                    raise AIError("Gemini kaliti noto'g'ri yoki bloklangan. Admin GEMINI_API_KEY ni tekshirishi kerak.")
+                if status == 429:
+                    break  # bu modelning limiti tugagan — darhol keyingi modelga
+                if status in (500, 502, 503, 504):
+                    await asyncio.sleep(3)
+                    continue
+                break  # 400/404 va boshqalar — keyingi model
+    raise AIError(user_error)
+
+
+# ---------------- Groq (bepul zaxira, OpenAI uslubidagi API) ----------------
+
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+
+async def _ask_groq(prompt: str, schema: dict, max_tokens: int) -> dict:
+    body = {
+        "model": config.GROQ_MODEL,
+        "messages": [
+            {"role": "system", "content": SYSTEM},
+            {"role": "user", "content": prompt + "\n\nJavob faqat shu JSON sxemaga mos JSON obyekt bo'lsin:\n"
+             + json.dumps(schema, ensure_ascii=False)},
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.7,
+        "max_tokens": min(max_tokens, 8000),
+    }
+    timeout = aiohttp.ClientTimeout(total=120)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(GROQ_URL, json=body,
+                                    headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"}) as r:
+                data = await r.json(content_type=None)
+                status = r.status
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        _remember("groq", config.GROQ_MODEL, "network", str(e))
+        raise AIError("AI serveriga ulanib bo'lmadi") from e
+    if status != 200:
+        msg = (data.get("error") or {}).get("message", "") if isinstance(data, dict) else ""
+        _remember("groq", config.GROQ_MODEL, status, msg)
+        raise AIError("AI hozir javob bermayapti. Bir daqiqadan so'ng qayta urinib ko'ring.")
+    try:
+        return json.loads(data["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, json.JSONDecodeError) as e:
+        _remember("groq", config.GROQ_MODEL, 200, "JSON o'qilmadi")
+        raise AIError("AI javobini o'qib bo'lmadi, qayta urinib ko'ring") from e
+
+
+async def health_check() -> dict:
+    """Admin uchun: AI haqiqatan javob beryaptimi?"""
+    started = time.time()
+    try:
+        data = await _ask_json("Bitta so'z bilan javob bering: salom", {
+            "type": "object", "properties": {"answer": {"type": "string"}},
+            "required": ["answer"], "additionalProperties": False}, 200)
+        return {"ok": True, "provider": config.AI_PROVIDER, "seconds": round(time.time() - started, 1),
+                "answer": str(data.get("answer", ""))[:50]}
+    except AIError as e:
+        return {"ok": False, "provider": config.AI_PROVIDER, "error": str(e), "last_error": dict(last_error)}
 
 
 def _parse_gemini(data: dict) -> dict:

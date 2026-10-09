@@ -16,13 +16,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import ai, click, config, db, notify, service, templates, tg_auth
+from . import admin, ai, click, config, db, notify, service, templates, tg_auth
+from .sessions import COOKIE, current_user, require_user, session_token
 
 log = logging.getLogger("web")
 app = FastAPI(title="YaratSlayd", docs_url=None, redoc_url=None)
 app.include_router(click.router)
+app.include_router(admin.router)
 WEB_DIR = config.ROOT / "web"
-COOKIE = "ys_session"
 
 # Fon vazifalari: job_id -> holat (server qayta ishga tushsa yo'qoladi, fayllar esa DB'da qoladi)
 jobs: dict[str, dict] = {}
@@ -53,24 +54,6 @@ def _rate_ok(key: str) -> bool:
         return False
     q.append(now)
     return True
-
-
-def session_token(request: Request) -> str | None:
-    # Cookie (oddiy brauzer), X-Session sarlavhasi (Telegram ichida cookie bloklanishi mumkin)
-    # yoki ?s= (Telegram ichida fayl yuklab olish havolasi)
-    return request.cookies.get(COOKIE) or request.headers.get("x-session") or request.query_params.get("s")
-
-
-def current_user(request: Request) -> int | None:
-    token = session_token(request)
-    return db.session_user(token) if token else None
-
-
-def require_user(request: Request) -> int:
-    uid = current_user(request)
-    if uid is None:
-        raise HTTPException(401, "Avval Telegram orqali kiring")
-    return uid
 
 
 class PlanIn(BaseModel):
