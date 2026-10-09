@@ -22,13 +22,24 @@ _load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 ADMIN_IDS = {int(x) for x in os.getenv("ADMIN_IDS", "").replace(" ", "").split(",") if x}
 
-# AI matn: Claude. Kalit bo'lmasa DEMO rejim (sinov uchun soxta matn).
+# AI matn. AI_PROVIDER: gemini (bepul), claude yoki demo.
+# Bo'sh qolsa: GEMINI_API_KEY bo'lsa gemini, ANTHROPIC_API_KEY bo'lsa claude, aks holda demo.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
-DEMO_MODE = os.getenv("DEMO_MODE", "0") == "1" or not ANTHROPIC_API_KEY
+AI_PROVIDER = os.getenv("AI_PROVIDER", "").lower() or (
+    "gemini" if GEMINI_API_KEY else "claude" if ANTHROPIC_API_KEY else "demo"
+)
+DEMO_MODE = AI_PROVIDER == "demo"
 
-# Rasmlar: Pexels (bepul). Kalit bo'lmasa slaydlar rasmsiz chiqadi.
+# Rasmlar. IMAGE_PROVIDER: pollinations (bepul AI rasm, kalitsiz), pexels (bepul foto, kalit kerak), none.
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "")
+IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "").lower() or ("pexels" if PEXELS_API_KEY else "pollinations")
+
+# Sayt
+PORT = int(os.getenv("PORT", "8000"))
+BOT_USERNAME = os.getenv("BOT_USERNAME", "")  # bo'sh bo'lsa ishga tushganda Telegram'dan olinadi
 
 # Narxlar (so'm)
 PRICE_PRESENTATION = int(os.getenv("PRICE_PRESENTATION", "2000"))

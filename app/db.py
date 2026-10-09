@@ -28,6 +28,16 @@ CREATE TABLE IF NOT EXISTS orders (
     file_path TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS web_logins (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS web_sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -162,3 +172,55 @@ def stats() -> dict:
 def all_user_ids() -> list[int]:
     with tx() as c:
         return [r[0] for r in c.execute("SELECT id FROM users").fetchall()]
+
+
+# ---------------- Sayt orqali kirish (Telegram bot tasdiqlaydi) ----------------
+
+def create_login(token: str) -> None:
+    with tx() as c:
+        c.execute("DELETE FROM web_logins WHERE created_at < datetime('now', '-1 hour')")
+        c.execute("INSERT INTO web_logins (token) VALUES (?)", (token,))
+
+
+def confirm_login(token: str, user_id: int) -> bool:
+    with tx() as c:
+        cur = c.execute(
+            "UPDATE web_logins SET user_id=? WHERE token=? AND user_id IS NULL "
+            "AND created_at >= datetime('now', '-15 minutes')",
+            (user_id, token),
+        )
+        return cur.rowcount == 1
+
+
+def take_login(token: str) -> int | None:
+    """Tasdiqlangan kirish tokenini bir marta ishlatadi va user_id qaytaradi."""
+    with tx() as c:
+        row = c.execute("SELECT user_id FROM web_logins WHERE token=?", (token,)).fetchone()
+        if not row or row["user_id"] is None:
+            return None
+        c.execute("DELETE FROM web_logins WHERE token=?", (token,))
+        return row["user_id"]
+
+
+def create_session(token: str, user_id: int) -> None:
+    with tx() as c:
+        c.execute("INSERT INTO web_sessions (token, user_id) VALUES (?,?)", (token, user_id))
+
+
+def session_user(token: str) -> int | None:
+    with tx() as c:
+        row = c.execute(
+            "SELECT user_id FROM web_sessions WHERE token=? AND created_at >= datetime('now', '-30 days')",
+            (token,),
+        ).fetchone()
+        return row["user_id"] if row else None
+
+
+def delete_session(token: str) -> None:
+    with tx() as c:
+        c.execute("DELETE FROM web_sessions WHERE token=?", (token,))
+
+
+def get_order(order_id: int):
+    with tx() as c:
+        return c.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
