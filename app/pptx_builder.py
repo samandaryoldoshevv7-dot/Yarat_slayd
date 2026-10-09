@@ -10,6 +10,7 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
 from pptx.enum.text import MSO_AUTO_SIZE
+from pptx.dml.color import RGBColor
 from pptx.util import Emu, Pt
 
 TITLE_TYPES = {PP_PLACEHOLDER.TITLE, PP_PLACEHOLDER.CENTER_TITLE}
@@ -185,11 +186,14 @@ def _add_picture_right(slide, body, image: bytes, slide_w: int) -> None:
     if pic_h > height:
         pic_h, pic_w = height, int(height * 4 / 3)
     pic_left = area_left + (area_w - pic_w) // 2
-    pic_top = top + (height - pic_h) // 2
+    pic_top = top + Emu(Pt(6))  # matn bilan bir chiziqda boshlanadi
 
     with Image.open(io.BytesIO(image)) as im:
         iw, ih = im.size
     pic = slide.shapes.add_picture(io.BytesIO(image), pic_left, pic_top, pic_w, pic_h)
+    # Oq ramka: rasm har qanday fonda "foto-karta" kabi aniq ajralib turadi
+    pic.line.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    pic.line.width = Pt(3)
     box, img = pic_w / pic_h, iw / ih
     if img > box:  # rasm kengroq — yon tomonlardan kesamiz
         cut = (1 - box / img) / 2
