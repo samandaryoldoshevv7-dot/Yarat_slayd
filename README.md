@@ -33,9 +33,13 @@ Foydalanuvchi ──► Sayt ─────────┘         │         
    | `PAYMENT_CARD` | to'lov qabul qiladigan karta raqami |
    | `PAYMENT_CARD_OWNER` | karta egasining ismi |
 
-6. **Ma'lumotlar o'chib ketmasligi uchun:** servis ustida o'ng tugma → **Attach Volume** → Mount path: `/app/data`.
-   Volume bo'lmasa, har yangilanishda balanslar va fayllar o'chadi.
-7. **Sayt manzili:** **Settings → Networking → Generate Domain**. `...up.railway.app` manzili beriladi, sayt shu yerda ochiladi.
+6. **Volume (ma'lumotlar o'chib ketmasligi uchun):** Railway'da loyihani oching (servislar turgan katta maydon).
+   Bo'sh joyni o'ng tugma bilan bosing (yoki `Ctrl+K` / `⌘K` → «Volume» deb yozing) → **Create Volume** →
+   servisingizni tanlang → **Mount path:** `/app/data` → **Create**. Railway servisni o'zi qayta ishga tushiradi.
+   Volume bo'lmasa, har yangilanishda balanslar, to'lovlar va fayllar o'chadi.
+7. **Sayt manzili:** servisni bosing → **Settings → Networking → Public Networking → Generate Domain**.
+   `...up.railway.app` manzili chiqadi, sayt shu manzilda ochiladi. Botdagi «🌐 Saytda ochish» tugmasi
+   ham shu manzilni avtomatik oladi (o'z domeningiz bo'lsa `SITE_URL` o'zgaruvchisini qo'shing).
 8. **Deploy** tugmasini bosing. **Deployments → View logs** bo'limida `Bot ishga tushdi: @...` va `AI: gemini` yozuvlari chiqishi kerak.
 
 Boshqa sozlamalar (narx, bonus, rasm manbasi) `.env.example` faylida izohlari bilan yozilgan.
@@ -64,7 +68,8 @@ python main.py            # bot + sayt (http://localhost:8000)
 | Qism | Holat |
 |---|---|
 | Bot: mavzu → til → slaydlar soni → dizayn → bepul reja → to'lov → `.pptx` | ✅ |
-| Sayt: shu jarayon brauzerda, rejani tahrirlash, 50 ta dizayn galereyasi | ✅ |
+| Sayt: shu jarayon brauzerda, rejani tahrirlash, 7 uslubga ajratilgan 50 ta dizayn | ✅ |
+| Bot ↔ sayt: saytda yasalgan fayl botga ham keladi, botdan saytga bir bosishda kirish | ✅ |
 | Saytga Telegram orqali kirish (bot tasdiqlaydi), «Mening ishlarim» | ✅ |
 | Balans, 2 000 so'm sovg'a, do'st taklifi uchun +500 so'm | ✅ |
 | To'ldirish: karta + chek, admin bir tugma bilan tasdiqlaydi | ✅ |
@@ -79,6 +84,7 @@ main.py                Bot + sayt birga (Railway shuni ishga tushiradi)
 bot.py                 Telegram bot (aiogram 3)
 app/web.py             Sayt serveri (FastAPI)
 web/index.html         Sayt sahifasi
+web/static/            Logo, favicon va namuna slaydlar (scripts/make_showcase.py yasaydi)
 app/ai.py              AI: Gemini / Claude / DEMO
 app/images.py          Rasmlar: Pollinations / Pexels
 app/pptx_builder.py    Shablon asosida .pptx yig'ish

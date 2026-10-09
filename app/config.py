@@ -39,7 +39,11 @@ IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "").lower() or ("pexels" if PEXELS_
 
 # Sayt
 PORT = int(os.getenv("PORT", "8000"))
-BOT_USERNAME = os.getenv("BOT_USERNAME", "")  # bo'sh bo'lsa ishga tushganda Telegram'dan olinadi
+BOT_USERNAME = os.getenv("BOT_USERNAME", "")
+# Saytning ochiq manzili (botdagi «Saytda ochish» tugmasi uchun). Railway domenni o'zi beradi.
+SITE_URL = (os.getenv("SITE_URL") or (
+    f"https://{os.environ['RAILWAY_PUBLIC_DOMAIN']}" if os.getenv("RAILWAY_PUBLIC_DOMAIN") else ""
+)).rstrip("/")  # bo'sh bo'lsa ishga tushganda Telegram'dan olinadi
 
 # Narxlar (so'm)
 PRICE_PRESENTATION = int(os.getenv("PRICE_PRESENTATION", "2000"))

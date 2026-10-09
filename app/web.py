@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import ai, config, db, service, templates
+from . import ai, config, db, notify, service, templates
 
 log = logging.getLogger("web")
 app = FastAPI(title="YaratSlayd", docs_url=None, redoc_url=None)
@@ -77,11 +77,16 @@ class GenerateIn(PlanIn):
 def get_config():
     return {
         "price": config.PRICE_PRESENTATION,
+        "welcome_bonus": config.WELCOME_BONUS,
         "bot": config.BOT_USERNAME,
         "demo": config.DEMO_MODE,
         "min_slides": config.MIN_SLIDES,
         "max_slides": config.MAX_SLIDES,
-        "templates": [{"id": t.id, "preview": f"/previews/{t.id}.jpg"} for t in templates.all_templates()],
+        "categories": templates.CATEGORIES,
+        "templates": [
+            {"id": t.id, "preview": f"/previews/{t.id}.jpg", "category": t.category}
+            for t in templates.all_templates()
+        ],
     }
 
 
@@ -160,6 +165,8 @@ async def generate(body: GenerateIn, request: Request):
             path = await service.generate(order_id, body.topic.strip(), body.lang, outline, body.template, progress)
             db.finish_order(order_id, "done", str(path))
             jobs[job_id].update(status="done", step="Tayyor!", title=outline["title"])
+            # Sayt va bot bitta: fayl Telegram'ga ham yuboriladi
+            await notify.send_file(uid, path, f"✅ {outline['title']}\n(saytda tayyorlandi)")
         except Exception as e:
             log.exception("Sayt generatsiya xatosi (order %s)", order_id)
             db.finish_order(order_id, "failed")
@@ -210,6 +217,12 @@ def download(order_id: int, request: Request):
 # ---------------- Sahifalar ----------------
 
 app.mount("/previews", StaticFiles(directory=config.PREVIEWS_DIR), name="previews")
+app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return FileResponse(WEB_DIR / "static" / "favicon.png")
 
 
 @app.get("/")

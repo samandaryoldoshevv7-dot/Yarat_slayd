@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import random
+import secrets
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -19,7 +20,7 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from app import ai, config, db, service, templates
+from app import ai, config, db, notify, service, templates
 
 log = logging.getLogger("bot")
 router = Router()
@@ -29,12 +30,14 @@ BTN_BALANCE = "💰 Balans"
 BTN_FILES = "📁 Mening ishlarim"
 BTN_INVITE = "👥 Do'st taklif qilish"
 BTN_HELP = "❓ Yordam"
+BTN_SITE = "🌐 Saytda ochish"
 
 MAIN_KB = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text=BTN_CREATE)],
         [KeyboardButton(text=BTN_BALANCE), KeyboardButton(text=BTN_FILES)],
         [KeyboardButton(text=BTN_INVITE), KeyboardButton(text=BTN_HELP)],
+        [KeyboardButton(text=BTN_SITE)],
     ],
     resize_keyboard=True,
 )
@@ -165,6 +168,25 @@ async def invite(msg: Message, bot: Bot):
     )
 
 
+@router.message(F.text == BTN_SITE)
+@router.message(Command("site"))
+async def open_site(msg: Message):
+    if not config.SITE_URL:
+        return await msg.answer("Sayt hali ulanmagan.")
+    ensure_user(msg.from_user)
+    # Bir martalik havola: saytga avtomatik kirasiz, balans va ishlar bot bilan umumiy
+    token = secrets.token_urlsafe(18)
+    db.create_login(token)
+    db.confirm_login(token, msg.from_user.id)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🌐 Saytni ochish", url=f"{config.SITE_URL}/?login={token}")
+    await msg.answer(
+        "Saytda ham xuddi shu balans va taqdimotlaringiz bor. Saytda rejani tahrirlash va "
+        "50 ta dizaynni katta ko'rinishda tanlash qulayroq.\nHavola 15 daqiqa amal qiladi.",
+        reply_markup=kb.as_markup(),
+    )
+
+
 # ---------------- Hisobni to'ldirish (qo'lda tasdiqlash) ----------------
 
 @router.callback_query(F.data == "topup")
@@ -207,7 +229,7 @@ async def topup_receipt(msg: Message, state: FSMContext, bot: Bot):
     await msg.answer("✅ Chek qabul qilindi. Tekshirilgach xabar beramiz.", reply_markup=MAIN_KB)
 
 
-@router.message(Topup.receipt, ~F.text.in_({BTN_CREATE, BTN_BALANCE, BTN_FILES, BTN_INVITE, BTN_HELP}))
+@router.message(Topup.receipt, ~F.text.in_({BTN_CREATE, BTN_BALANCE, BTN_FILES, BTN_INVITE, BTN_HELP, BTN_SITE}))
 async def topup_need_photo(msg: Message):
     await msg.answer("Iltimos, to'lov chekini <b>rasm</b> ko'rinishida yuboring yoki /cancel.")
 
@@ -256,7 +278,7 @@ async def create_start(msg: Message, state: FSMContext):
 @router.message(Create.topic, F.text)
 async def create_topic(msg: Message, state: FSMContext):
     topic = msg.text.strip()
-    if topic.startswith("/") or topic in {BTN_CREATE, BTN_BALANCE, BTN_FILES, BTN_INVITE, BTN_HELP}:
+    if topic.startswith("/") or topic in {BTN_CREATE, BTN_BALANCE, BTN_FILES, BTN_INVITE, BTN_HELP, BTN_SITE}:
         await state.clear()
         return await msg.answer("Bekor qilindi.", reply_markup=MAIN_KB)
     if len(topic) < 3:
@@ -283,6 +305,10 @@ async def create_lang(cb: CallbackQuery, state: FSMContext):
     await cb.answer()
 
 
+def tpl_caption(t) -> str:
+    return f"🎨 Dizaynni tanlang\nUslub: {templates.CATEGORIES[t.category]}"
+
+
 def template_kb(index: int, total: int):
     kb = InlineKeyboardBuilder()
     kb.button(text="◀️", callback_data=f"tpl:go:{(index - 1) % total}")
@@ -301,7 +327,7 @@ async def create_slides(cb: CallbackQuery, state: FSMContext):
     tpls = templates.all_templates()
     await cb.message.delete()
     await cb.message.answer_photo(
-        FSInputFile(tpls[0].preview), caption="🎨 Dizaynni tanlang:", reply_markup=template_kb(0, len(tpls))
+        FSInputFile(tpls[0].preview), caption=tpl_caption(tpls[0]), reply_markup=template_kb(0, len(tpls))
     )
     await cb.answer()
 
@@ -315,7 +341,7 @@ async def create_template(cb: CallbackQuery, state: FSMContext, bot: Bot):
     if parts[1] == "go":
         i = int(parts[2])
         await cb.message.edit_media(
-            InputMediaPhoto(media=FSInputFile(tpls[i].preview), caption="🎨 Dizaynni tanlang:"),
+            InputMediaPhoto(media=FSInputFile(tpls[i].preview), caption=tpl_caption(tpls[i])),
             reply_markup=template_kb(i, len(tpls)),
         )
         return await cb.answer()
@@ -495,6 +521,7 @@ async def run():
     """Botni ishga tushiradi (main.py sayt bilan birga chaqiradi)."""
     bot = Bot(config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
     me = await bot.get_me()
+    notify.bot = bot
     config.BOT_USERNAME = config.BOT_USERNAME or me.username
     log.info("Bot ishga tushdi: @%s", me.username)
     dp = Dispatcher(storage=MemoryStorage())
