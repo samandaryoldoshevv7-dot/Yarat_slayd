@@ -54,6 +54,7 @@ class Create(StatesGroup):
     topic = State()
     lang = State()
     slides = State()
+    charts = State()
     template = State()
     plan = State()
     working = State()
@@ -72,6 +73,8 @@ def som(amount: int) -> str:
 @router.message(CommandStart())
 async def start(msg: Message, command: CommandObject, state: FSMContext):
     await state.clear()
+    if command.args == "login":
+        return await send_login_code(msg)
     if command.args and command.args.startswith("weblogin_"):
         db.register_user(msg.from_user.id, msg.from_user.username, msg.from_user.full_name, None)
         if db.confirm_login(command.args[len("weblogin_"):], msg.from_user.id):
@@ -93,6 +96,18 @@ async def start(msg: Message, command: CommandObject, state: FSMContext):
     if is_new and config.WELCOME_BONUS:
         text += f"\n🎁 Sizga <b>{som(config.WELCOME_BONUS)}</b> sovg'a qilindi — birinchi taqdimot bepul!"
     await msg.answer(text, reply_markup=MAIN_KB)
+
+
+@router.message(Command("kod"))
+async def send_login_code(msg: Message):
+    """Saytga kirish uchun bir martalik kod."""
+    db.register_user(msg.from_user.id, msg.from_user.username, msg.from_user.full_name, None)
+    code = db.create_login_code(msg.from_user.id)
+    await msg.answer(
+        f"🔐 <b>Saytga kirish kodi</b>\n\n<code>{code}</code>\n\n"
+        "⏱ Kod 2 daqiqa amal qiladi.\n⚠️ Kodni hech kimga bermang!",
+        reply_markup=MAIN_KB,
+    )
 
 
 def ensure_user(user) -> None:
@@ -353,6 +368,23 @@ def template_kb(index: int, total: int):
 @router.callback_query(Create.slides, F.data.startswith("slides:"))
 async def create_slides(cb: CallbackQuery, state: FSMContext):
     await state.update_data(slides=int(cb.data.split(":")[1]))
+    await state.set_state(Create.charts)
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📊 Ha, diagramma qo'shilsin", callback_data="charts:1")
+    kb.button(text="Yo'q, faqat matn va rasm", callback_data="charts:0")
+    kb.adjust(1)
+    await cb.message.edit_text(
+        "📊 Slaydlarga <b>diagramma</b> qo'shilsinmi?\n"
+        "Raqamli ma'lumot bor joyga (ulushlar, yillar bo'yicha o'zgarish, taqqoslash) AI 1–3 ta "
+        "diagramma chizadi. Diagramma PowerPoint'da tahrirlanadi.",
+        reply_markup=kb.as_markup(),
+    )
+    await cb.answer()
+
+
+@router.callback_query(Create.charts, F.data.startswith("charts:"))
+async def create_charts(cb: CallbackQuery, state: FSMContext):
+    await state.update_data(charts=cb.data.endswith(":1"))
     await state.set_state(Create.template)
     tpls = templates.all_templates()
     await cb.message.delete()
@@ -382,12 +414,23 @@ async def create_template(cb: CallbackQuery, state: FSMContext, bot: Bot):
     await make_plan(cb.message, state)
 
 
+def edit_kb(order_id: int):
+    """Tayyor fayl ostidagi «Tahrirlash» tugmasi — sayt Telegram ichida tahrirlovchi bilan ochiladi."""
+    if not config.SITE_URL:
+        return None
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✏️ Tahrirlash (matn, rasm, diagramma, shrift)",
+              web_app=WebAppInfo(url=f"{config.SITE_URL}/?edit={order_id}"))
+    return kb.as_markup()
+
+
 def plan_text(data: dict) -> str:
     o = data["outline"]
     lines = "\n".join(f"{i}. {t}" for i, t in enumerate(o["slides"], 1))
     return (
         f"📋 <b>{o['title']}</b>\n<i>{o['subtitle']}</i>\n\n<b>Reja:</b>\n{lines}\n\n"
-        f"Slaydlar: {data['slides']} ta · Til: {LANG_NAMES[data['lang']]}\n"
+        f"Slaydlar: {data['slides']} ta · Til: {LANG_NAMES[data['lang']]} · "
+        f"Diagramma: {'ha' if data.get('charts') else 'yo‘q'}\n"
         f"💵 Narxi: <b>{som(config.PRICE_PRESENTATION)}</b>"
     )
 
@@ -459,7 +502,8 @@ async def plan_ok(cb: CallbackQuery, state: FSMContext):
             pass
 
     try:
-        path = await service.generate(order_id, data["topic"], data["lang"], data["outline"], data["template"], progress)
+        path = await service.generate(order_id, data["topic"], data["lang"], data["outline"], data["template"], progress,
+                                      charts=data.get("charts", False))
     except Exception as e:
         log.exception("Generatsiya xatosi (order %s)", order_id)
         db.finish_order(order_id, "failed")
@@ -481,11 +525,11 @@ async def plan_ok(cb: CallbackQuery, state: FSMContext):
             f"✅ <b>{data['outline']['title']}</b>\n\nPowerPoint, Google Slides yoki WPS'da ochib tahrirlashingiz mumkin.\n"
             f"Balans: {som(db.balance(uid))}"
         ),
-        reply_markup=MAIN_KB,
+        reply_markup=edit_kb(order_id) or MAIN_KB,
     )
 
 
-@router.message(StateFilter(Create.lang, Create.slides, Create.template, Create.plan))
+@router.message(StateFilter(Create.lang, Create.slides, Create.charts, Create.template, Create.plan))
 async def use_buttons(msg: Message):
     await msg.answer("Iltimos, yuqoridagi tugmalardan foydalaning yoki /cancel.")
 

@@ -108,6 +108,9 @@ python main.py            # bot + sayt (http://localhost:8000)
 | Xato bo'lsa pul avtomatik qaytadi | ✅ |
 | Admin: `/stats`, `/add <id> <summa>`, `/broadcast` (xabarga reply qilib) | ✅ |
 | Telegram Mini App: bot menyusidan sayt, avtomatik kirish | ✅ |
+| Saytga Telegram kodi bilan kirish (botda `/kod` yoki saytdagi tugma) | ✅ |
+| Diagrammalar: botda «Ha/Yo'q», saytda «Diagramma» tugmasi (haqiqiy PowerPoint diagrammasi) | ✅ |
+| Tayyor taqdimotni saytda tahrirlash: matn, rasm (yuklash yoki AI), diagramma, dizayn, shrift | ✅ |
 | Click orqali avtomatik to'lov (kalitlar qo'yilgach yoqiladi) | ✅ |
 | Payme | ⏳ [GOYALAR.md](GOYALAR.md) |
 

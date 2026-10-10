@@ -5,13 +5,18 @@ AI matni shu layoutlar asosida yangi slaydlarga joylanadi.
 """
 import copy
 import io
+import logging
 from pathlib import Path
 
 from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
+from pptx.chart.data import CategoryChartData
+from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION
+from pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE, PP_PLACEHOLDER
 from pptx.enum.text import MSO_AUTO_SIZE
 from pptx.dml.color import RGBColor
 from pptx.util import Emu, Pt
+
+log = logging.getLogger(__name__)
 
 TITLE_TYPES = {PP_PLACEHOLDER.TITLE, PP_PLACEHOLDER.CENTER_TITLE}
 BODY_TYPES = {PP_PLACEHOLDER.BODY, PP_PLACEHOLDER.OBJECT, PP_PLACEHOLDER.SUBTITLE}
@@ -164,14 +169,12 @@ def _bullet_size(bullets: list[str], narrow: bool) -> int:
     return size - 2 if narrow else size
 
 
-def _add_picture_right(slide, body, image: bytes, slide_w: int) -> None:
-    """O'ng tomonga rasm qo'yadi (4:3, markazdan kesib).
+def _media_area(body, slide_w: int):
+    """Rasm yoki diagramma uchun o'ng tomondagi joy (left, top, width, height).
 
-    Matn maydoni slaydning chap qismida bo'lsa, rasm bo'sh o'ng tomonga joylanadi,
+    Matn maydoni slaydning chap qismida bo'lsa, bo'sh o'ng tomon olinadi,
     aks holda matn maydoni toraytiriladi.
     """
-    from PIL import Image
-
     left, top, width, height = body.left, body.top, body.width, body.height
     gap = Emu(Pt(18))
     margin = int(slide_w * 0.05)
@@ -181,7 +184,14 @@ def _add_picture_right(slide, body, image: bytes, slide_w: int) -> None:
         text_w = int(width * 0.55)
         body.left, body.top, body.width, body.height = left, top, text_w, height
         area_left, area_w = left + text_w + gap, width - text_w - gap
+    return area_left, top, area_w, height
 
+
+def _add_picture(slide, area, image: bytes) -> None:
+    """Rasmni 4:3 nisbatda, markazdan kesib, oq ramka bilan qo'yadi."""
+    from PIL import Image
+
+    area_left, top, area_w, height = area
     pic_w, pic_h = area_w, int(area_w * 3 / 4)
     if pic_h > height:
         pic_h, pic_w = height, int(height * 4 / 3)
@@ -203,6 +213,109 @@ def _add_picture_right(slide, body, image: bytes, slide_w: int) -> None:
         pic.crop_top = pic.crop_bottom = cut
 
 
+CHART_INK = RGBColor(0x1F, 0x29, 0x33)
+
+
+def _set_alpha(shape, percent: int) -> None:
+    """Shakl to'ldirilishiga shaffoflik beradi (python-pptx'da to'g'ridan-to'g'ri API yo'q)."""
+    from pptx.oxml.ns import qn
+
+    clr = shape.fill._xPr.find(qn("a:solidFill"))[0]
+    alpha = clr.makeelement(qn("a:alpha"), {"val": str(percent * 1000)})
+    clr.append(alpha)
+
+
+CHART_TYPES = {
+    "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
+    "bar": XL_CHART_TYPE.BAR_CLUSTERED,
+    "line": XL_CHART_TYPE.LINE_MARKERS,
+    "pie": XL_CHART_TYPE.DOUGHNUT,
+}
+
+
+def _add_chart(slide, area, chart: dict, font: str | None = None) -> None:
+    """Haqiqiy PowerPoint diagrammasi (rasm emas — ichidagi raqamlarni tahrirlash mumkin).
+
+    Ranglar shablon mavzusidan (accent) olinadi, shuning uchun har shablonga mos tushadi.
+    """
+    area_left, top, area_w, height = area
+    kind = chart.get("type", "column")
+    # Oq kartochka: diagramma har qanday fonda (qorong'i, rasmli) aniq o'qiladi
+    card_h = min(height, int(area_w * 0.82))
+    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, area_left, top, area_w, card_h)
+    card.adjustments[0] = 0.06
+    card.fill.solid()
+    card.fill.fore_color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    _set_alpha(card, 94)
+    card.line.fill.background()
+    card.shadow.inherit = False
+    pad = Emu(Pt(12))
+    area_left, top, area_w, height = area_left + pad, top + pad, area_w - 2 * pad, card_h - 2 * pad
+    data = CategoryChartData()
+    data.categories = chart["labels"]
+    data.add_series(chart.get("unit") or chart.get("title") or "", chart["values"])
+    w, h = area_w, height
+    gf = slide.shapes.add_chart(CHART_TYPES.get(kind, CHART_TYPES["column"]), area_left, top, w, h, data)
+    ch = gf.chart
+    ch.font.size = Pt(12)
+    ch.font.color.rgb = CHART_INK
+    if font:
+        ch.font.name = font
+    title = chart.get("title")
+    ch.has_title = bool(title)
+    if title:
+        ch.chart_title.text_frame.text = title
+        for p in ch.chart_title.text_frame.paragraphs:
+            for r in p.runs:
+                r.font.size = Pt(14)
+                r.font.bold = True
+    plot = ch.plots[0]
+    plot.has_data_labels = True
+    labels = plot.data_labels
+    labels.font.size = Pt(11)
+    labels.font.bold = True
+    if kind == "pie":
+        ch.has_legend = True
+        ch.legend.position = XL_LEGEND_POSITION.BOTTOM
+        ch.legend.include_in_layout = False
+        labels.show_percentage = False
+        plot.vary_by_categories = True
+    else:
+        ch.has_legend = False
+        plot.vary_by_categories = False
+        if kind in ("column", "bar"):
+            plot.gap_width = 60
+            try:
+                labels.position = XL_LABEL_POSITION.OUTSIDE_END
+            except Exception:
+                pass
+        try:
+            ch.value_axis.has_major_gridlines = kind == "line"
+            ch.value_axis.visible = kind == "line"
+            ch.category_axis.tick_labels.font.size = Pt(11)
+        except Exception:
+            pass
+
+
+def apply_fonts(prs, fonts: dict | None) -> None:
+    """Mijoz tanlagan shriftlar: sarlavhalar va asosiy matn uchun alohida."""
+    if not fonts or not (fonts.get("title") or fonts.get("body")):
+        return
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if shape.has_chart and fonts.get("body"):
+                shape.chart.font.name = fonts["body"]
+            if not shape.has_text_frame:
+                continue
+            is_title = shape.is_placeholder and shape.placeholder_format.type in TITLE_TYPES
+            name = fonts.get("title") if is_title else fonts.get("body")
+            if not name:
+                continue
+            for p in shape.text_frame.paragraphs:
+                for r in p.runs:
+                    r.font.name = name
+
+
 def _title_size(ph, text: str, cover: bool) -> int:
     """Sarlavha o'lchami: matn uzunligi va eng uzun so'z maydonga sig'ishi bo'yicha."""
     n = len(text)
@@ -217,7 +330,8 @@ def _title_size(ph, text: str, cover: bool) -> int:
     return max(size, 16)
 
 
-def build(template: Path, out: Path, lang: str, outline: dict, content: dict, images: list | None = None) -> Path:
+def build(template: Path, out: Path, lang: str, outline: dict, content: dict, images: list | None = None,
+          fonts: dict | None = None) -> Path:
     prs = Presentation(str(template))
     lay = _pick_layouts(prs)
     slides = list(prs.slides)
@@ -241,20 +355,26 @@ def build(template: Path, out: Path, lang: str, outline: dict, content: dict, im
         _set_text(b[0], outline["subtitle"])
     _clean_empty(s)
 
-    def content_slide(i, title, bullets, image=None):
+    def content_slide(i, title, bullets, image=None, chart=None):
         k = i % len(lay["content"])
         s = prs.slides.add_slide(lay["content"][k])
         _apply_decor(s, content_decor[k])
         if (t := _title_ph(s)) is not None:
             _set_text(t, title, _title_size(t, title, cover=False))
         body = _body_phs(s)
+        media = False
         if body:
-            if image:
+            if chart or image:
+                area = _media_area(body[0], prs.slide_width)
                 try:
-                    _add_picture_right(s, body[0], image, prs.slide_width)
-                except Exception:  # buzilgan rasm butun taqdimotni to'xtatmasin
-                    image = None
-            _set_bullets(body[0], bullets, _bullet_size(bullets, narrow=bool(image)))
+                    if chart:
+                        _add_chart(s, area, chart, (fonts or {}).get("body"))
+                    else:
+                        _add_picture(s, area, image)
+                    media = True
+                except Exception:  # buzilgan rasm yoki diagramma butun taqdimotni to'xtatmasin
+                    log.exception("Media qo'shilmadi")
+            _set_bullets(body[0], bullets, _bullet_size(bullets, narrow=media))
         _clean_empty(s)
 
     # 2. Reja
@@ -262,7 +382,8 @@ def build(template: Path, out: Path, lang: str, outline: dict, content: dict, im
 
     # 3. Asosiy slaydlar
     for i, sl in enumerate(content["slides"], 1):
-        content_slide(i, sl["title"], sl["bullets"], images[i - 1] if i - 1 < len(images) else None)
+        content_slide(i, sl["title"], sl["bullets"], images[i - 1] if i - 1 < len(images) else None,
+                      sl.get("chart"))
 
     # 4. Yakuniy slayd
     s = prs.slides.add_slide(lay["closing"])
@@ -273,6 +394,7 @@ def build(template: Path, out: Path, lang: str, outline: dict, content: dict, im
         _set_text(b[0], content["closing"])
     _clean_empty(s)
 
+    apply_fonts(prs, fonts)
     out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(out))
     return out

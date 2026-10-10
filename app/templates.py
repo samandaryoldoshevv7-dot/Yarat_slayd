@@ -29,6 +29,11 @@ _CATEGORY_OF = {
 }
 
 
+# Eng chiroylilari birinchi ko'rsatiladi (qolganlari raqam tartibida keyin)
+FEATURED = ["13", "08", "02", "07", "34", "28", "16", "21", "18", "26", "30", "38", "46", "47", "50",
+            "49", "33", "12", "04", "09", "20", "36", "44", "43", "37", "22", "35", "31", "45", "48"]
+
+
 @dataclass(frozen=True)
 class Template:
     id: str  # "01", "02", ...
@@ -47,7 +52,8 @@ def all_templates() -> list[Template]:
     out = []
     for p in sorted(config.TEMPLATES_DIR.glob("template_*.pptx")):
         out.append(Template(id=p.stem.split("_", 1)[1], path=p))
-    return out
+    rank = {tid: i for i, tid in enumerate(FEATURED)}
+    return sorted(out, key=lambda t: (rank.get(t.id, len(rank)), t.id))
 
 
 def get(template_id: str) -> Template | None:

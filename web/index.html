@@ -227,6 +227,58 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .order-t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .order-row small { color: var(--muted); }
 
+/* ============ Diagramma tugmasi ============ */
+.chart-toggle { height: 44px; border-radius: 12px; background: var(--bg); border-color: var(--bg-2); }
+.chart-toggle[aria-pressed="true"] { background: var(--green-50); border-color: var(--green-100); color: var(--green-700); font-weight: 600; }
+
+/* ============ Tahrirlovchi ============ */
+.editor-sec { padding: var(--s7) 0 var(--s8); }
+.ed-panel { background: var(--white); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow-md); overflow: hidden; }
+.ed-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s5) var(--s6); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.ed-h { font-size: 22px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-actions { display: flex; gap: var(--s2); align-items: center; }
+.ed-settings { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--s3); padding: var(--s4) var(--s6); background: var(--bg); border-bottom: 1px solid var(--line); }
+.ed-settings label { display: block; }
+.ed-body { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 520px; }
+.ed-list { border-right: 1px solid var(--line); padding: var(--s3); display: flex; flex-direction: column; gap: 4px; max-height: 720px; overflow: auto; background: #FCFCFA; }
+.ed-list button { display: flex; gap: 10px; align-items: center; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid transparent; background: none; cursor: pointer; font-size: 14px; color: var(--ink-2); }
+.ed-list button:hover { background: var(--bg-2); }
+.ed-list button[aria-current="true"] { background: var(--white); border-color: var(--green-100); box-shadow: var(--shadow-sm); color: var(--ink); font-weight: 600; }
+.ed-list .n { width: 22px; height: 22px; border-radius: 6px; background: var(--bg-2); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--muted); flex: none; }
+.ed-list button[aria-current="true"] .n { background: var(--green); color: #fff; }
+.ed-list .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-list .m { margin-left: auto; color: var(--muted); font-size: 12px; flex: none; }
+.ed-main { padding: var(--s6); display: grid; gap: var(--s5); align-content: start; }
+.ed-block h4 { font-size: 15px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ed-bullets { display: grid; gap: 8px; }
+.ed-row { display: grid; grid-template-columns: 1fr 40px; gap: 8px; }
+.ed-row textarea { min-height: 44px; resize: vertical; padding: 10px 14px; height: auto; line-height: 1.45; }
+.seg-sm { display: inline-flex; padding: 3px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; }
+.seg-sm button { height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; font-weight: 600; font-size: 13px; color: var(--muted); cursor: pointer; }
+.seg-sm button[aria-pressed="true"] { background: var(--white); color: var(--ink); box-shadow: var(--shadow-sm); }
+.ed-media { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--s4); align-items: start; }
+.ed-media .ph { aspect-ratio: 4 / 3; border-radius: 12px; border: 1px dashed var(--line); background: var(--bg); display: grid; place-items: center; color: var(--muted); font-size: 13px; overflow: hidden; }
+.ed-media .ph img { width: 100%; height: 100%; object-fit: cover; }
+.ed-media .tools { display: grid; gap: 8px; }
+.ed-media .tools .inline { display: flex; gap: 8px; }
+.chart-grid { display: grid; gap: 8px; }
+.chart-grid .cr { display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; }
+.chart-meta { display: grid; grid-template-columns: 1fr 1fr 110px; gap: 8px; margin-bottom: 8px; }
+.ed-note { font-size: 13px; color: var(--muted); }
+@media (max-width: 900px) {
+  .ed-settings { grid-template-columns: 1fr; padding: var(--s4); }
+  .ed-body { grid-template-columns: 1fr; }
+  .ed-list { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); max-height: none; }
+  .ed-list button { flex: none; max-width: 220px; }
+  .ed-main { padding: var(--s4); }
+  .ed-media { grid-template-columns: 1fr; }
+  .ed-top { padding: var(--s4); }
+  .ed-actions { width: 100%; }
+  .ed-actions #edSave { flex: 1; }
+  .chart-meta { grid-template-columns: 1fr 1fr; }
+  .chart-grid .cr { grid-template-columns: 1fr 90px 40px; }
+}
+
 /* ============ Shablonlar galereyasi ============ */
 .gallery-top { display: flex; justify-content: space-between; align-items: end; gap: var(--s5); margin-bottom: var(--s5); flex-wrap: wrap; }
 .gallery-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
@@ -368,6 +420,24 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 .modal-card p { color: var(--muted); margin: 8px 0 var(--s5); }
 .modal-card .wait { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; color: var(--muted); margin-top: var(--s4); }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--green-100); border-top-color: var(--green); animation: spin .8s linear infinite; }
+.login-card { position: relative; text-align: left; }
+.login-card h3 { font-size: 26px; }
+.login-card p { margin: 6px 0 20px; }
+.modal-x { position: absolute; right: 16px; top: 16px; border-radius: 50%; }
+.modal-x:hover { background: var(--bg-2); color: var(--ink); border-color: var(--line); }
+.tg-code-btn { display: block; text-align: center; text-decoration: none; padding: 16px; border-radius: 14px; border: 1px solid #CBE6F7; background: #EAF5FC; color: #1F5F87; transition: background-color .18s, transform .18s var(--ease); }
+.tg-code-btn:hover { background: #DDEFFA; transform: translateY(-1px); }
+.tg-code-btn span { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 16px; color: #17496A; }
+.tg-code-btn svg { width: 20px; height: 20px; color: #2AABEE; }
+.tg-code-btn small { display: block; margin-top: 4px; font-size: 13px; }
+.code-boxes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.code-boxes input { height: 60px; text-align: center; font: 700 26px var(--font-head); border: 1px solid var(--line); border-radius: 14px; background: var(--bg); outline: none; transition: border-color .18s, box-shadow .18s; min-width: 0; }
+.code-boxes input:focus { border-color: var(--green); box-shadow: 0 0 0 4px rgba(22,163,106,.14); background: var(--white); }
+.code-boxes.err input { border-color: var(--danger); animation: shake .3s; }
+.code-boxes.busy input { opacity: .6; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.code-msg { font-size: 13.5px; color: var(--muted); margin-top: 10px; text-align: center; min-height: 20px; }
+.code-msg.err { color: var(--danger); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; z-index: 70; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px; box-shadow: var(--shadow-lg); transition: opacity .2s var(--ease), transform .2s var(--ease); pointer-events: none; max-width: calc(100% - 32px); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .demo-banner { background: #FFF7E6; color: #8A5300; text-align: center; font-size: 14px; padding: 8px 16px; border-bottom: 1px solid #F6E2B8; }
@@ -529,6 +599,9 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
             </select>
             <label class="sr-only" for="slides">Slaydlar soni</label>
             <select class="select" id="slides"></select>
+            <button class="chip chart-toggle" id="chartsToggle" type="button" aria-pressed="false" title="Raqamli ma'lumotlar uchun 1–3 ta diagramma">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Diagramma
+            </button>
             <button class="btn btn-primary" id="planBtn" type="submit">Reja tuzish <svg><use href="#i-arrow"/></svg></button>
           </div>
         </form>
@@ -630,7 +703,8 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
             <p id="doneText">PowerPoint, WPS yoki Google Slides'da ochib tahrirlashingiz mumkin.</p>
             <div class="actions">
               <a class="btn btn-primary btn-lg" id="downloadBtn" href="#"><svg><use href="#i-down"/></svg>PowerPoint yuklab olish</a>
-              <button class="btn btn-secondary btn-lg" id="newBtn" type="button">Yangi taqdimot</button>
+              <button class="btn btn-secondary btn-lg" id="editBtn" type="button"><svg><use href="#i-edit"/></svg>Tahrirlash</button>
+              <button class="btn btn-tertiary btn-lg" id="newBtn" type="button">Yangi taqdimot</button>
             </div>
           </div>
           <div id="failBox" hidden>
@@ -642,6 +716,34 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAHRIRLOVCHI ============ -->
+  <section class="editor-sec" id="editor" hidden aria-labelledby="edTitle">
+    <div class="container">
+      <div class="ed-panel">
+        <div class="ed-top">
+          <div style="min-width:0">
+            <div class="kicker" style="margin-bottom:4px">Tahrirlash</div>
+            <h2 id="edTitle" class="ed-h">Taqdimot</h2>
+          </div>
+          <div class="ed-actions">
+            <button class="btn btn-tertiary btn-sm" id="edClose" type="button">Yopish</button>
+            <button class="btn btn-primary" id="edSave" type="button"><svg><use href="#i-down"/></svg>Saqlash va yuklab olish</button>
+          </div>
+        </div>
+        <div class="ed-settings">
+          <label><span class="field-label">Dizayn</span><select class="select" id="edTemplate"></select></label>
+          <label><span class="field-label">Sarlavha shrifti</span><select class="select" id="edFontTitle"></select></label>
+          <label><span class="field-label">Matn shrifti</span><select class="select" id="edFontBody"></select></label>
+        </div>
+        <div class="ed-body">
+          <nav class="ed-list" id="edList" aria-label="Slaydlar"></nav>
+          <div class="ed-main" id="edMain"></div>
+        </div>
+        <div class="msg" id="edMsg" role="alert" aria-live="polite" style="margin:0 24px 20px"></div>
       </div>
     </div>
   </section>
@@ -912,13 +1014,21 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 </footer>
 
 <div class="modal" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
-  <div class="modal-card">
-    <div class="tg"><svg><use href="#i-tg"/></svg></div>
-    <h3 id="loginTitle">Telegram orqali kirish</h3>
-    <p>Telegram ochiladi. U yerda <b>START</b> tugmasini bosing va shu sahifaga qayting. Kirish avtomatik tasdiqlanadi.</p>
-    <a class="btn btn-primary" id="loginLink" href="#" target="_blank" rel="noopener" style="width:100%">Telegram'ni ochish</a>
-    <div class="wait"><span class="spinner"></span>Tasdiqlash kutilmoqda...</div>
-    <button class="btn btn-tertiary btn-sm" id="loginClose" type="button" style="margin-top:12px">Bekor qilish</button>
+  <div class="modal-card login-card">
+    <button class="icon-btn modal-x" id="loginClose" type="button" aria-label="Yopish"><svg><use href="#i-x"/></svg></button>
+    <h3 id="loginTitle">Kirish</h3>
+    <p>YaratSlayd'ga xush kelibsiz. Parol kerak emas — kodni Telegram botdan olasiz.</p>
+    <a class="tg-code-btn" id="loginLink" href="#" target="_blank" rel="noopener">
+      <span><svg><use href="#i-tg"/></svg>Telegram'dan kodni olish</span>
+      <small>Bosing — Telegram ochiladi va kod keladi</small>
+    </a>
+    <label class="field-label" style="text-align:left;margin-top:22px" for="code0">Kelgan kodni kiriting</label>
+    <div class="code-boxes" id="codeBoxes">
+      <input id="code0" inputmode="numeric" autocomplete="one-time-code" maxlength="5" aria-label="1-raqam">
+      <input inputmode="numeric" maxlength="1" aria-label="2-raqam"><input inputmode="numeric" maxlength="1" aria-label="3-raqam">
+      <input inputmode="numeric" maxlength="1" aria-label="4-raqam"><input inputmode="numeric" maxlength="1" aria-label="5-raqam">
+    </div>
+    <div class="code-msg" id="codeMsg" aria-live="polite">Kod to'g'ri bo'lsa avtomatik kirasiz</div>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -994,40 +1104,58 @@ async function loadOrders() {
     <div class="order-row">
       <div style="min-width:0"><div class="order-t">${esc(o.topic)}</div>
       <small>${o.slides} slayd · ${esc(o.created_at.slice(0, 16))}</small></div>
-      <a class="btn btn-secondary btn-sm" data-dl="${esc(o.topic)}" href="${withSession(o.download)}"><svg><use href="#i-down"/></svg>Yuklab olish</a>
+      <span style="display:flex;gap:6px;flex:none">${o.editable ? `<button class="btn btn-tertiary btn-sm" type="button" data-edit="${o.id}"><svg><use href="#i-edit"/></svg>Tahrirlash</button>` : ""}
+      <a class="btn btn-secondary btn-sm" data-dl="${esc(o.topic)}" href="${withSession(o.download)}"><svg><use href="#i-down"/></svg>Yuklab olish</a></span>
     </div>`).join("");
 }
 
 // ---------- Kirish ----------
-let loginTimer = null;
-async function login(btn) {
-  if (btn) loading(btn, true);
+async function login() {
+  if (!state.cfg.bot) return toast("Telegram orqali kirish hozircha ulanmagan.");
+  $("loginLink").href = `https://t.me/${state.cfg.bot}?start=login`;
+  codeInputs().forEach((i) => (i.value = ""));
+  setCodeMsg("Kod to'g'ri bo'lsa avtomatik kirasiz");
+  $("loginModal").classList.add("show");
+  setTimeout(() => $("loginLink").focus(), 50);
+}
+const codeInputs = () => [...$("codeBoxes").querySelectorAll("input")];
+function setCodeMsg(text, err) { $("codeMsg").textContent = text; $("codeMsg").classList.toggle("err", !!err); $("codeBoxes").classList.toggle("err", !!err); }
+
+async function submitCode() {
+  const ins = codeInputs(), code = ins.map((i) => i.value).join("");
+  if (!/^\d{5}$/.test(code)) return;
+  $("codeBoxes").classList.add("busy");
   try {
-    const { token, url } = await api("/api/login/start", { method: "POST" });
-    $("loginLink").href = url;
-    $("loginModal").classList.add("show");
-    $("loginLink").focus();
-    window.open(url, "_blank", "noopener");
-    const started = Date.now();
-    clearInterval(loginTimer);
-    loginTimer = setInterval(async () => {
-      if (Date.now() - started > 10 * 60 * 1000) { closeLogin(); return toast("Kirish vaqti tugadi. Qayta urinib ko'ring."); }
-      const r = await api("/api/login/check?token=" + encodeURIComponent(token)).catch(() => ({ ok: false }));
-      if (r.ok) {
-        state.session = r.session;
-        closeLogin();
-        await refreshMe();
-        toast("Xush kelibsiz, " + state.me.name + "!");
-        if (state.pendingGenerate) { state.pendingGenerate = false; generate(); }
-      }
-    }, 2000);
+    const r = await api("/api/login/code", { method: "POST", body: JSON.stringify({ code }) });
+    state.session = r.session;
+    closeLogin();
+    await refreshMe();
+    toast("Xush kelibsiz, " + state.me.name + "!");
+    if (state.pendingGenerate) { state.pendingGenerate = false; generate(); }
+    if (state.pendingEdit) { const id = state.pendingEdit; state.pendingEdit = null; openEditor(id); }
   } catch (e) {
-    toast(e.status === 503 ? "Telegram orqali kirish hozircha ulanmagan." : e.message);
+    setCodeMsg(e.message, true);
+    ins.forEach((i) => (i.value = "")); ins[0].focus();
   } finally {
-    if (btn) loading(btn, false);
+    $("codeBoxes").classList.remove("busy");
   }
 }
-function closeLogin() { clearInterval(loginTimer); $("loginModal").classList.remove("show"); }
+// 5 ta katak: raqam yozilsa keyingisiga o'tadi, joylashtirilgan (paste) kod taqsimlanadi
+$("codeBoxes").addEventListener("input", (e) => {
+  const ins = codeInputs(), i = ins.indexOf(e.target);
+  const digits = e.target.value.replace(/\D/g, "");
+  if (digits.length > 1) { digits.slice(0, 5).split("").forEach((d, j) => { if (ins[i + j]) ins[i + j].value = d; }); }
+  else e.target.value = digits;
+  setCodeMsg("Kod to'g'ri bo'lsa avtomatik kirasiz");
+  const next = ins.find((x) => !x.value);
+  if (next) { if (digits) next.focus(); } else submitCode();
+});
+$("codeBoxes").addEventListener("keydown", (e) => {
+  const ins = codeInputs(), i = ins.indexOf(e.target);
+  if (e.key === "Backspace" && !e.target.value && i > 0) { ins[i - 1].value = ""; ins[i - 1].focus(); }
+});
+$("loginLink").addEventListener("click", () => setTimeout(() => codeInputs()[0].focus(), 300));
+function closeLogin() { $("loginModal").classList.remove("show"); }
 
 // ---------- Balansni to'ldirish (Click) ----------
 function topupButtons() {
@@ -1080,7 +1208,7 @@ async function makePlan(btn) {
   setMsg($("planMsg"), "");
   setMsg($("genMsg"), "");
   loading(btn, true);
-  const req = { topic, lang: $("lang").value, slides: +$("slides").value };
+  const req = { topic, lang: $("lang").value, slides: +$("slides").value, charts: $("chartsToggle").getAttribute("aria-pressed") === "true" };
   try {
     state.outline = await api("/api/plan", { method: "POST", body: JSON.stringify(req) });
     state.planReq = req;
@@ -1237,7 +1365,7 @@ async function generate() {
   const btn = $("genBtn");
   loading(btn, true);
   try {
-    const body = { ...state.planReq, template: state.template, outline: o,
+    const body = { ...state.planReq, charts: !!state.planReq.charts, template: state.template, outline: o,
       slides: Math.min(state.cfg.max_slides, Math.max(state.cfg.min_slides, o.slides.length + 3)) };
     const { job } = await api("/api/generate", { method: "POST", body: JSON.stringify(body) });
     state.lastJob = job;
@@ -1270,6 +1398,7 @@ async function poll(job) {
         : "PowerPoint, WPS yoki Google Slides'da ochib tahrirlashingiz mumkin.";
       $("downloadBtn").href = withSession(j.download);
       $("downloadBtn").dataset.dl = j.title;
+      state.lastOrder = j.order_id;
       $("downloadBtn").focus({ preventScroll: true });
     } else {
       $("failBox").hidden = false;
@@ -1282,6 +1411,185 @@ async function poll(job) {
     refreshMe();
   }
 }
+
+// ---------- Tahrirlovchi ----------
+const CHART_KINDS = [["column", "Ustunli"], ["bar", "Gorizontal"], ["pie", "Doiraviy (ulush)"], ["line", "Chiziqli (o'zgarish)"]];
+const ed = { id: null, p: null, cur: "cover", images: [], v: 0 };
+
+async function openEditor(orderId) {
+  if (!state.me.logged_in) { state.pendingEdit = orderId; return login(); }
+  try {
+    const p = await api(`/api/orders/${orderId}/project`);
+    ed.id = orderId; ed.p = p; ed.images = p.images; ed.cur = "cover"; ed.v = Date.now();
+    p.content.slides.forEach((sl) => { if (!sl.bullets.length) sl.bullets = [""]; });
+    $("edTitle").textContent = p.outline.title;
+    $("edTemplate").innerHTML = state.cfg.templates.map((t, i) => `<option value="${t.id}">№${i + 1} · ${esc(catName(t.category))}</option>`).join("");
+    $("edTemplate").value = p.template;
+    const fontOpts = p.fonts_list.map((f) => `<option value="${esc(f)}" style="font-family:'${esc(f)}'">${f ? esc(f) : "Shablon shrifti"}</option>`).join("");
+    $("edFontTitle").innerHTML = fontOpts; $("edFontBody").innerHTML = fontOpts;
+    $("edFontTitle").value = (p.fonts || {}).title || ""; $("edFontBody").value = (p.fonts || {}).body || "";
+    setMsg($("edMsg"), "");
+    $("editor").hidden = false;
+    renderEdList(); renderEdMain();
+    $("editor").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function edItems() {
+  return [["cover", "Muqova"], ...ed.p.content.slides.map((s, i) => [i, s.title || `Slayd ${i + 1}`]), ["closing", "Yakuniy slayd"]];
+}
+function renderEdList() {
+  $("edList").innerHTML = edItems().map(([k, t], n) => {
+    const sl = typeof k === "number" ? ed.p.content.slides[k] : null;
+    const mark = sl ? (sl.chart ? "📊" : ed.images[k] ? "🖼" : "") : "";
+    return `<button type="button" data-ed="${k}" aria-current="${String(k === ed.cur)}"><span class="n">${n + 1}</span><span class="t">${esc(t)}</span><span class="m">${mark}</span></button>`;
+  }).join("");
+}
+
+function imgUrl(i) { return withSession(`/api/orders/${ed.id}/image/${i}`) + (state.session ? "&" : "?") + "v=" + ed.v; }
+
+function renderEdMain() {
+  const m = $("edMain"), k = ed.cur, P = ed.p;
+  if (k === "cover") {
+    m.innerHTML = `<div class="ed-block"><h4>Muqova</h4>
+      <label class="field-label" for="edCoverTitle">Taqdimot sarlavhasi</label><input class="input" id="edCoverTitle" maxlength="300" value="${esc(P.outline.title)}">
+      <div style="height:12px"></div><label class="field-label" for="edCoverSub">Taglavha</label><input class="input" id="edCoverSub" maxlength="300" value="${esc(P.outline.subtitle || "")}"></div>
+      <p class="ed-note">Reja slaydi slayd sarlavhalaridan avtomatik tuziladi.</p>`;
+    $("edCoverTitle").oninput = (e) => { P.outline.title = e.target.value; $("edTitle").textContent = e.target.value; };
+    $("edCoverSub").oninput = (e) => { P.outline.subtitle = e.target.value; };
+    return;
+  }
+  if (k === "closing") {
+    m.innerHTML = `<div class="ed-block"><h4>Yakuniy slayd</h4><label class="field-label" for="edClosing">Xulosa jumlasi</label>
+      <textarea class="input" id="edClosing" maxlength="400" style="min-height:90px;padding:12px 14px">${esc(P.content.closing || "")}</textarea></div>`;
+    $("edClosing").oninput = (e) => { P.content.closing = e.target.value; };
+    return;
+  }
+  const sl = P.content.slides[k];
+  const mode = sl.chart ? "chart" : sl._mode || (ed.images[k] ? "image" : "none");
+  m.innerHTML = `
+    <div class="ed-block"><label class="field-label" for="edSlTitle">Slayd sarlavhasi</label><input class="input" id="edSlTitle" maxlength="200" value="${esc(sl.title)}"></div>
+    <div class="ed-block"><h4>Matn <button class="btn btn-tertiary btn-sm" type="button" id="edAddB" ${sl.bullets.length >= 8 ? "disabled" : ""}><svg><use href="#i-plus"/></svg>Punkt qo'shish</button></h4>
+      <div class="ed-bullets" id="edBullets">${sl.bullets.map((b, i) => `<div class="ed-row"><textarea class="input" data-b="${i}" rows="2" maxlength="300" aria-label="${i + 1}-punkt">${esc(b)}</textarea>
+        <button class="icon-btn" type="button" data-bdel="${i}" aria-label="${i + 1}-punktni o'chirish"><svg><use href="#i-x"/></svg></button></div>`).join("")}</div></div>
+    <div class="ed-block"><h4>Rasm yoki diagramma
+      <span class="seg-sm" role="group" aria-label="Media turi">
+        <button type="button" data-mode="image" aria-pressed="${mode === "image"}">Rasm</button>
+        <button type="button" data-mode="chart" aria-pressed="${mode === "chart"}">Diagramma</button>
+        <button type="button" data-mode="none" aria-pressed="${mode === "none"}">Yo'q</button></span></h4>
+      <div id="edMedia"></div></div>`;
+  $("edSlTitle").oninput = (e) => { sl.title = e.target.value; renderEdListSoft(); };
+  m.querySelectorAll("[data-b]").forEach((t) => (t.oninput = (e) => { sl.bullets[+t.dataset.b] = e.target.value; }));
+  m.querySelectorAll("[data-bdel]").forEach((b) => (b.onclick = () => { sl.bullets.splice(+b.dataset.bdel, 1); if (!sl.bullets.length) sl.bullets.push(""); renderEdMain(); }));
+  $("edAddB").onclick = () => { sl.bullets.push(""); renderEdMain(); const ts = m.querySelectorAll("[data-b]"); ts[ts.length - 1].focus(); };
+  m.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => setMediaMode(k, b.dataset.mode)));
+  renderMedia(k, mode);
+}
+function renderEdListSoft() { const b = $("edList").querySelector(`[data-ed="${ed.cur}"] .t`); if (b) b.textContent = ed.p.content.slides[ed.cur].title || "Slayd"; }
+
+async function setMediaMode(k, mode) {
+  const sl = ed.p.content.slides[k];
+  sl._mode = mode;
+  if (mode === "chart" && !sl.chart) sl.chart = { type: "column", title: "", unit: "", labels: ["", "", ""], values: [0, 0, 0] };
+  if (mode !== "chart") sl.chart = null;
+  if (mode === "none" && ed.images[k]) {
+    try { await api(`/api/orders/${ed.id}/image/${k}`, { method: "DELETE" }); ed.images[k] = false; } catch (e) { toast(e.message); }
+  }
+  renderEdMain(); renderEdList();
+}
+
+function renderMedia(k, mode) {
+  const box = $("edMedia"), sl = ed.p.content.slides[k];
+  if (mode === "none") { box.innerHTML = '<p class="ed-note">Bu slaydda faqat matn bo\'ladi.</p>'; return; }
+  if (mode === "image") {
+    box.innerHTML = `<div class="ed-media"><div class="ph">${ed.images[k] ? `<img alt="Slayd rasmi" src="${imgUrl(k)}">` : "Rasm yo'q"}</div>
+      <div class="tools">
+        <label class="btn btn-secondary" style="cursor:pointer"><input type="file" accept="image/*" id="edUpload" hidden>Kompyuterdan rasm yuklash</label>
+        <label class="field-label" for="edQuery" style="margin:6px 0 0">Yoki AI chizsin — nimani tasvirlash kerak (inglizcha yaxshiroq):</label>
+        <div class="inline"><input class="input" id="edQuery" maxlength="120" value="${esc(sl.image_query || "")}"><button class="btn btn-secondary" type="button" id="edAiImg">Yaratish</button></div>
+        ${ed.images[k] ? '<button class="btn btn-tertiary btn-sm" type="button" id="edDelImg" style="justify-self:start">Rasmni olib tashlash</button>' : ""}
+      </div></div>`;
+    $("edUpload").onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      if (f.size > 8 * 1024 * 1024) return toast("Rasm 8 MB dan katta bo'lmasin.");
+      const fd = new FormData(); fd.append("file", f);
+      const lbl = e.target.parentElement; lbl.classList.add("is-loading");
+      try {
+        const res = await fetch(`/api/orders/${ed.id}/image/${k}`, { method: "POST", body: fd, credentials: "same-origin", headers: state.session ? { "X-Session": state.session } : {} });
+        if (!res.ok) throw new Error(((await res.json().catch(() => ({}))).detail) || "Yuklab bo'lmadi");
+        ed.images[k] = true; ed.v = Date.now(); renderEdMain(); renderEdList(); toast("Rasm qo'yildi.");
+      } catch (err) { toast(err.message); lbl.classList.remove("is-loading"); }
+    };
+    $("edAiImg").onclick = async (e) => {
+      const q = $("edQuery").value.trim(); if (q.length < 2) return toast("Rasm uchun tavsif yozing.");
+      loading(e.currentTarget, true);
+      try { await api(`/api/orders/${ed.id}/image/${k}/ai`, { method: "POST", body: JSON.stringify({ query: q }) }); sl.image_query = q; ed.images[k] = true; ed.v = Date.now(); renderEdMain(); renderEdList(); }
+      catch (err) { toast(err.message); loading(e.currentTarget, false); }
+    };
+    if ($("edDelImg")) $("edDelImg").onclick = () => setMediaMode(k, "none");
+    return;
+  }
+  const c = sl.chart;
+  box.innerHTML = `<div class="chart-meta">
+      <input class="input" id="chTitle" maxlength="80" placeholder="Diagramma nomi" value="${esc(c.title || "")}">
+      <select class="select" id="chType">${CHART_KINDS.map(([v, l]) => `<option value="${v}" ${c.type === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+      <input class="input" id="chUnit" maxlength="20" placeholder="Birlik: %, mln" value="${esc(c.unit || "")}"></div>
+    <div class="chart-grid">${c.labels.map((l, i) => `<div class="cr"><input class="input" data-cl="${i}" maxlength="40" placeholder="Nomi (masalan 2024)" value="${esc(l)}">
+      <input class="input" data-cv="${i}" type="number" step="any" placeholder="Qiymat" value="${esc(c.values[i] ?? "")}">
+      <button class="icon-btn" type="button" data-cdel="${i}" aria-label="Qatorni o'chirish" ${c.labels.length <= 2 ? "disabled" : ""}><svg><use href="#i-x"/></svg></button></div>`).join("")}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-tertiary btn-sm" type="button" id="chAdd" ${c.labels.length >= 8 ? "disabled" : ""}><svg><use href="#i-plus"/></svg>Qator qo'shish</button>
+      <span class="ed-note">Diagramma PowerPoint'da ham tahrirlanadi. Doiraviy diagrammada qiymatlar yig'indisi 100 bo'lgani ma'qul.</span></div>`;
+  $("chTitle").oninput = (e) => (c.title = e.target.value);
+  $("chUnit").oninput = (e) => (c.unit = e.target.value);
+  $("chType").onchange = (e) => (c.type = e.target.value);
+  box.querySelectorAll("[data-cl]").forEach((x) => (x.oninput = (e) => (c.labels[+x.dataset.cl] = e.target.value)));
+  box.querySelectorAll("[data-cv]").forEach((x) => (x.oninput = (e) => (c.values[+x.dataset.cv] = e.target.value === "" ? "" : Number(e.target.value))));
+  box.querySelectorAll("[data-cdel]").forEach((x) => (x.onclick = () => { c.labels.splice(+x.dataset.cdel, 1); c.values.splice(+x.dataset.cdel, 1); renderMedia(k, "chart"); }));
+  $("chAdd").onclick = () => { c.labels.push(""); c.values.push(0); renderMedia(k, "chart"); };
+}
+
+async function saveEditor(btn) {
+  const P = ed.p, msg = $("edMsg");
+  setMsg(msg, "");
+  for (const [i, sl] of P.content.slides.entries()) {
+    if (sl.chart && (sl.chart.labels.some((l) => !String(l).trim()) || sl.chart.values.some((v) => v === "" || !isFinite(v)))) {
+      ed.cur = i; renderEdList(); renderEdMain();
+      return setMsg(msg, `«${esc(sl.title)}» slaydidagi diagrammada bo'sh nom yoki qiymat bor. To'ldiring yoki qatorni o'chiring.`);
+    }
+  }
+  const body = {
+    title: P.outline.title.trim() || "Taqdimot", subtitle: (P.outline.subtitle || "").trim(), closing: (P.content.closing || "").trim(),
+    template: $("edTemplate").value, fonts: { title: $("edFontTitle").value, body: $("edFontBody").value },
+    slides: P.content.slides.map((sl) => ({ title: sl.title, bullets: sl.bullets.filter((b) => b.trim()),
+      chart: sl.chart ? { ...sl.chart, values: sl.chart.values.map(Number) } : null })),
+  };
+  loading(btn, true);
+  try {
+    const r = await api(`/api/orders/${ed.id}/save`, { method: "POST", body: JSON.stringify(body) });
+    setMsg(msg, "Saqlandi. Yangi fayl yuklab olinmoqda" + (state.cfg.bot ? " va Telegram'ga yuborildi." : "."), "ok");
+    const a = document.createElement("a");
+    a.href = withSession(r.download) + (r.download.includes("?") || state.session ? "&" : "?") + "v=" + r.version;
+    a.dataset.dl = body.title; a.hidden = true; document.body.append(a); a.click(); a.remove();
+    loadOrders();
+  } catch (e) {
+    setMsg(msg, esc(e.message));
+  } finally {
+    loading(btn, false);
+  }
+}
+
+$("edList").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-ed]"); if (!b) return;
+  ed.cur = b.dataset.ed === "cover" || b.dataset.ed === "closing" ? b.dataset.ed : +b.dataset.ed;
+  renderEdList(); renderEdMain();
+});
+$("edSave").addEventListener("click", (e) => saveEditor(e.currentTarget));
+$("edClose").addEventListener("click", () => { $("editor").hidden = true; });
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-edit]"); if (b) openEditor(+b.dataset.edit); });
+$("chartsToggle").addEventListener("click", (e) => { const b = e.currentTarget; b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true")); });
 
 // ---------- Oldin / keyin ----------
 function setBA(showSlides) {
@@ -1326,6 +1634,7 @@ async function init() {
   if (req && outline && Array.isArray(outline.slides)) {
     state.planReq = req; state.outline = outline;
     $("topic").value = req.topic; $("lang").value = req.lang; $("slides").value = req.slides;
+    $("chartsToggle").setAttribute("aria-pressed", String(!!req.charts));
     showStudio("edit"); renderPlan();
   }
 
@@ -1343,6 +1652,11 @@ async function init() {
     toast(r.ok ? "Telegram orqali kirdingiz." : "Kirish havolasi eskirgan. Botda «Saytda ochish» ni qayta bosing.");
   } else {
     await refreshMe();
+  }
+  const editId = +params.get("edit");
+  if (editId) {
+    history.replaceState(null, "", location.pathname);
+    if (state.me.logged_in) openEditor(editId); else toast("Tahrirlash uchun avval kiring.");
   }
 }
 
@@ -1383,6 +1697,7 @@ $("oSub").addEventListener("input", (e) => { state.outline.subtitle = e.target.v
 $("genBtn").addEventListener("click", generate);
 $("retryBtn").addEventListener("click", () => { showStudio("edit"); generate(); });
 $("backBtn").addEventListener("click", () => showStudio("edit"));
+$("editBtn").addEventListener("click", () => { if (state.lastOrder) openEditor(state.lastOrder); });
 $("newBtn").addEventListener("click", () => {
   unstore("ys_req", "ys_outline");
   state.outline = null; state.planReq = null;
@@ -1391,8 +1706,8 @@ $("newBtn").addEventListener("click", () => {
   setTimeout(() => $("topic").focus({ preventScroll: true }), 400);
 });
 $("moreBtn").addEventListener("click", () => { state.galleryShown += PAGE(); renderGallery(); });
-$("loginBtn").addEventListener("click", (e) => login(e.currentTarget));
-$("loginBtnM").addEventListener("click", (e) => { $("mobilePanel").classList.remove("open"); login(e.currentTarget); });
+$("loginBtn").addEventListener("click", () => login());
+$("loginBtnM").addEventListener("click", () => { $("mobilePanel").classList.remove("open"); login(); });
 $("loginClose").addEventListener("click", () => { state.pendingGenerate = false; closeLogin(); });
 $("loginModal").addEventListener("click", (e) => { if (e.target === $("loginModal")) { state.pendingGenerate = false; closeLogin(); } });
 $("logoutBtn").addEventListener("click", async () => { await api("/api/logout", { method: "POST" }).catch(() => {}); $("profileMenu").hidden = true; await refreshMe(); toast("Hisobdan chiqdingiz."); });
