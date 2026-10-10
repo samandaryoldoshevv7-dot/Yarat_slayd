@@ -60,7 +60,17 @@ CREATE TABLE IF NOT EXISTS payments (
     photo_file_id TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS kv (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
+
+# Eski bazalarga yangi ustunlar (mavjud ma'lumot saqlanadi)
+MIGRATIONS = [
+    ("orders", "finished_at", "TEXT"),
+    ("orders", "refunded", "INTEGER NOT NULL DEFAULT 0"),
+]
 
 
 def _connect() -> sqlite3.Connection:
@@ -80,6 +90,11 @@ def tx():
         if _conn is None:
             _conn = _connect()
             _conn.executescript(SCHEMA)
+            for table, col, decl in MIGRATIONS:
+                cols = {r["name"] for r in _conn.execute(f"PRAGMA table_info({table})")}
+                if col not in cols:
+                    _conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+            _conn.commit()
         try:
             yield _conn
             _conn.commit()
@@ -141,9 +156,93 @@ def create_order(user_id: int, topic: str, lang: str, slides: int, template: str
         return cur.lastrowid
 
 
+def start_order(user_id: int, topic: str, lang: str, slides: int, template: str, price: int) -> int | None:
+    """Balansdan yechish va buyurtma ochish — bitta tranzaksiyada. Mablag' yetmasa None.
+
+    Yarmida xato bo'lsa ikkalasi ham bekor bo'ladi: pul yechilib, buyurtma ochilmay qolmaydi.
+    """
+    with tx() as c:
+        cur = c.execute(
+            "UPDATE users SET balance = balance - ? WHERE id=? AND balance >= ?", (price, user_id, price)
+        )
+        if cur.rowcount != 1:
+            return None
+        return c.execute(
+            "INSERT INTO orders (user_id, topic, lang, slides, template, price) VALUES (?,?,?,?,?,?)",
+            (user_id, topic, lang, slides, template, price),
+        ).lastrowid
+
+
 def finish_order(order_id: int, status: str, file_path: str | None = None) -> None:
     with tx() as c:
-        c.execute("UPDATE orders SET status=?, file_path=? WHERE id=?", (status, file_path, order_id))
+        c.execute("UPDATE orders SET status=?, file_path=?, finished_at=COALESCE(finished_at, CURRENT_TIMESTAMP) WHERE id=?",
+                  (status, file_path, order_id))
+
+
+def fail_order(order_id: int) -> int:
+    """Buyurtmani muvaffaqiyatsiz deb belgilaydi va pulni qaytaradi — faqat bir marta.
+
+    Qaytarilgan summani beradi (allaqachon yakunlangan yoki qaytarilgan bo'lsa 0).
+    """
+    with tx() as c:
+        row = c.execute("SELECT user_id, price FROM orders WHERE id=? AND status='pending' AND refunded=0",
+                        (order_id,)).fetchone()
+        if not row:
+            return 0
+        c.execute("UPDATE orders SET status='failed', refunded=1, finished_at=CURRENT_TIMESTAMP WHERE id=?",
+                  (order_id,))
+        c.execute("UPDATE users SET balance = balance + ? WHERE id=?", (row["price"], row["user_id"]))
+        return row["price"]
+
+
+def stuck_orders():
+    """Tugallanmay qolgan buyurtmalar (server yarmida to'xtasa shunday qoladi)."""
+    with tx() as c:
+        return c.execute("SELECT * FROM orders WHERE status='pending' ORDER BY id").fetchall()
+
+
+def user_has_pending(user_id: int) -> bool:
+    with tx() as c:
+        return c.execute("SELECT 1 FROM orders WHERE user_id=? AND status='pending'",
+                         (user_id,)).fetchone() is not None
+
+
+def delete_order(order_id: int, user_id: int) -> bool:
+    """Foydalanuvchi o'z taqdimotini o'chiradi (yozuv hisob-kitob uchun qoladi, mavzu va fayl o'chadi)."""
+    with tx() as c:
+        cur = c.execute("UPDATE orders SET status='deleted', file_path=NULL, topic='' "
+                        "WHERE id=? AND user_id=? AND status='done'", (order_id, user_id))
+        return cur.rowcount == 1
+
+
+def delete_account_data(user_id: int) -> list[int]:
+    """Foydalanuvchi ma'lumotlarini o'chiradi: ism, username, mavzular, sessiyalar.
+
+    Telegram ID, balans va to'lov yozuvlari hisob-kitob uchun qoladi (aks holda qayta kirganda sovg'a bonusi
+    yana berilib qolardi). Fayllari o'chirilishi kerak bo'lgan buyurtmalar ro'yxatini qaytaradi.
+    """
+    with tx() as c:
+        ids = [r["id"] for r in c.execute("SELECT id FROM orders WHERE user_id=?", (user_id,)).fetchall()]
+        c.execute("UPDATE orders SET topic='', file_path=NULL, status=CASE WHEN status='done' THEN 'deleted' "
+                  "ELSE status END WHERE user_id=?", (user_id,))
+        c.execute("UPDATE users SET full_name='', username=NULL WHERE id=?", (user_id,))
+        c.execute("DELETE FROM web_sessions WHERE user_id=?", (user_id,))
+        c.execute("DELETE FROM login_codes WHERE user_id=?", (user_id,))
+        c.execute("DELETE FROM web_logins WHERE user_id=?", (user_id,))
+        return ids
+
+
+def get_secret(name: str) -> str:
+    """Server siri (havolalarni imzolash uchun). Bir marta yaratiladi va bazada saqlanadi."""
+    import secrets
+
+    with tx() as c:
+        row = c.execute("SELECT value FROM kv WHERE key=?", (name,)).fetchone()
+        if row:
+            return row["value"]
+        value = secrets.token_hex(32)
+        c.execute("INSERT INTO kv (key, value) VALUES (?,?)", (name, value))
+        return value
 
 
 def user_orders(user_id: int, limit: int = 10):
@@ -297,6 +396,10 @@ def admin_stats() -> dict:
             "revenue": one("SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='approved'"),
             "pending_payments": one("SELECT COUNT(*) FROM payments WHERE status='pending'"),
             "balance_total": one("SELECT COALESCE(SUM(balance),0) FROM users"),
+            # Haqiqiy tayyorlanish vaqti (soniya) — saytdagi va'dalarni shu bilan tekshirish mumkin
+            "avg_seconds_7d": one("SELECT CAST(COALESCE(AVG((julianday(finished_at)-julianday(created_at))*86400),0) "
+                                  "AS INTEGER) FROM orders WHERE status IN ('done','deleted') AND finished_at IS NOT NULL "
+                                  "AND created_at >= datetime('now','-7 days')"),
         }
 
 

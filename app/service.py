@@ -10,11 +10,26 @@ import os
 import re
 from pathlib import Path
 
-from . import ai, config, images, pptx_builder, preview, templates
+from . import ai, config, db, images, pptx_builder, preview, templates
 
 # Bir vaqtda nechta taqdimot yig'ilishi (server va AI limitlarini himoya qiladi)
 _slots = asyncio.Semaphore(int(os.getenv("MAX_PARALLEL", "3")))
 MAX_IMAGES = 6
+
+
+def recover_stuck_orders() -> list[dict]:
+    """Ishga tushganda chaqiriladi: oldingi jarayonda tugallanmay qolgan buyurtmalarni yopib, pulni qaytaradi.
+
+    Bot va sayt bitta jarayonda ishlaydi, shuning uchun ishga tushish paytida 'pending' holatidagi har bir
+    buyurtma aniq to'xtab qolgan (uni bajarayotgan vazifa endi yo'q).
+    """
+    out = []
+    for order in db.stuck_orders():
+        refunded = db.fail_order(order["id"])
+        if refunded:
+            out.append({"order_id": order["id"], "user_id": order["user_id"], "amount": refunded,
+                        "topic": order["topic"]})
+    return out
 
 
 def safe_filename(topic: str) -> str:
@@ -25,6 +40,12 @@ def safe_filename(topic: str) -> str:
 
 def project_dir(order_id: int) -> Path:
     return config.OUTPUT_DIR / f"order_{order_id}"
+
+
+def delete_project(order_id: int) -> None:
+    import shutil
+
+    shutil.rmtree(project_dir(order_id), ignore_errors=True)
 
 
 def load_project(order_id: int) -> dict | None:

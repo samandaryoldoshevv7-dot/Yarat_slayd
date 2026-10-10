@@ -145,7 +145,7 @@ async function load() {
   const s = o.stats, c = o.setup;
   $("stats").innerHTML = [
     ["Foydalanuvchilar", s.users, `bugun +${s.users_today}`],
-    ["Tayyor taqdimotlar", s.orders, `bugun ${s.orders_today}, xato ${s.failed_today}`],
+    ["Tayyor taqdimotlar", s.orders, `bugun ${s.orders_today}, xato ${s.failed_today}` + (s.avg_seconds_7d ? `, o'rtacha ${Math.round(s.avg_seconds_7d)} s` : "")],
     ["Tushum", som(s.revenue), "tasdiqlangan to'lovlar"],
     ["Kutilayotgan chek", s.pending_payments, "pastda ko'rib chiqing"],
   ].map(([t, v, n]) => `<div class="stat"><small>${t}</small><b>${esc(v)}</b><small>${esc(n)}</small></div>`).join("");

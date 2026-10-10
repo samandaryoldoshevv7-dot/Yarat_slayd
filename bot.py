@@ -1,5 +1,6 @@
 """YaratSlayd Telegram bot. Ishga tushirish: python bot.py"""
 import asyncio
+import html
 import logging
 import random
 
@@ -88,7 +89,7 @@ async def start(msg: Message, command: CommandObject, state: FSMContext):
             pass
     is_new = db.register_user(msg.from_user.id, msg.from_user.username, msg.from_user.full_name, ref)
     text = (
-        f"Assalomu alaykum, <b>{msg.from_user.first_name}</b>! 👋\n\n"
+        f"Assalomu alaykum, <b>{html.escape(msg.from_user.first_name or "")}</b>! 👋\n\n"
         "Men mavzu bo'yicha <b>tayyor taqdimot (PowerPoint)</b> yasab beraman:\n"
         "mavzuni yozasiz → reja tuziladi → dizaynni tanlaysiz → 1–2 daqiqada .pptx fayl.\n\n"
         f"💵 Narxi: <b>{som(config.PRICE_PRESENTATION)}</b> — reja bepul."
@@ -263,7 +264,7 @@ async def topup_receipt(msg: Message, state: FSMContext, bot: Bot):
     kb.adjust(3)
     user = msg.from_user
     caption = (
-        f"💳 To'lov #{pay_id}\nFoydalanuvchi: {user.full_name} "
+        f"💳 To'lov #{pay_id}\nFoydalanuvchi: {html.escape(user.full_name)} "
         f"(@{user.username or '-'}, <code>{user.id}</code>)\nSummani tanlang:"
     )
     for admin in config.ADMIN_IDS:
@@ -289,7 +290,7 @@ async def admin_payment(cb: CallbackQuery, bot: Bot):
     if row is None:
         return await cb.answer("Bu to'lov allaqachon ko'rib chiqilgan", show_alert=True)
     result = f"✅ +{som(amount)}" if amount else "❌ Rad etildi"
-    await cb.message.edit_caption(caption=(cb.message.caption or "") + f"\n\n{result} ({cb.from_user.full_name})")
+    await cb.message.edit_caption(caption=html.escape(cb.message.caption or "") + f"\n\n{result} ({html.escape(cb.from_user.full_name)})")
     try:
         if amount:
             await bot.send_message(
@@ -426,9 +427,10 @@ def edit_kb(order_id: int):
 
 def plan_text(data: dict) -> str:
     o = data["outline"]
-    lines = "\n".join(f"{i}. {t}" for i, t in enumerate(o["slides"], 1))
+    # Matn AI'dan va foydalanuvchi mavzusidan keladi: '<' yoki '&' Telegram HTML'ini buzmasin
+    lines = "\n".join(f"{i}. {html.escape(t)}" for i, t in enumerate(o["slides"], 1))
     return (
-        f"📋 <b>{o['title']}</b>\n<i>{o['subtitle']}</i>\n\n<b>Reja:</b>\n{lines}\n\n"
+        f"📋 <b>{html.escape(o['title'])}</b>\n<i>{html.escape(o['subtitle'])}</i>\n\n<b>Reja:</b>\n{lines}\n\n"
         f"Slaydlar: {data['slides']} ta · Til: {LANG_NAMES[data['lang']]} · "
         f"Diagramma: {'ha' if data.get('charts') else 'yo‘q'}\n"
         f"💵 Narxi: <b>{som(config.PRICE_PRESENTATION)}</b>"
@@ -479,7 +481,10 @@ async def plan_ok(cb: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     uid = cb.from_user.id
     price = config.PRICE_PRESENTATION
-    if not db.charge(uid, price):
+    if db.user_has_pending(uid):
+        return await cb.answer("Oldingi taqdimot hali tayyorlanmoqda, biroz kuting.", show_alert=True)
+    order_id = db.start_order(uid, data["topic"], data["lang"], data["slides"], data["template"], price)
+    if order_id is None:
         kb = InlineKeyboardBuilder()
         kb.button(text="💳 Hisobni to'ldirish", callback_data="topup")
         await cb.message.answer(
@@ -490,10 +495,7 @@ async def plan_ok(cb: CallbackQuery, state: FSMContext):
         return await cb.answer()
 
     await state.set_state(Create.working)
-    await cb.message.edit_reply_markup(reply_markup=None)
-    await cb.answer()
-    order_id = db.create_order(uid, data["topic"], data["lang"], data["slides"], data["template"], price)
-    status = await cb.message.answer("⏳ Boshlandi...")
+    status = None
 
     async def progress(text: str):
         try:
@@ -501,20 +503,27 @@ async def plan_ok(cb: CallbackQuery, state: FSMContext):
         except Exception:
             pass
 
+    # Pul yechilgandan keyingi har qanday xatoda buyurtma yopiladi va pul (bir marta) qaytariladi
     try:
+        await cb.message.edit_reply_markup(reply_markup=None)
+        await cb.answer()
+        status = await cb.message.answer("⏳ Boshlandi...")
         path = await service.generate(order_id, data["topic"], data["lang"], data["outline"], data["template"], progress,
                                       charts=data.get("charts", False))
     except Exception as e:
         log.exception("Generatsiya xatosi (order %s)", order_id)
-        db.finish_order(order_id, "failed")
-        db.add_balance(uid, price)
+        refunded = db.fail_order(order_id)
         await state.set_state(Create.plan)
         reason = str(e) if isinstance(e, ai.AIError) else "texnik xatolik"
         kb = InlineKeyboardBuilder()
         kb.button(text="🔄 Qayta urinish", callback_data="plan:ok")
-        return await status.edit_text(
-            f"⚠️ Kechirasiz, {reason}. {som(price)} balansingizga qaytarildi.", reply_markup=kb.as_markup()
-        )
+        text = f"⚠️ Kechirasiz, {reason}." + (f" {som(refunded)} balansingizga qaytarildi." if refunded else "")
+        try:
+            await (status.edit_text(text, reply_markup=kb.as_markup()) if status
+                   else cb.message.answer(text, reply_markup=kb.as_markup()))
+        except Exception:
+            log.warning("Xato xabarini yuborib bo'lmadi (order %s)", order_id)
+        return
 
     db.finish_order(order_id, "done", str(path))
     await state.clear()
@@ -522,7 +531,7 @@ async def plan_ok(cb: CallbackQuery, state: FSMContext):
     await cb.message.answer_document(
         FSInputFile(path),
         caption=(
-            f"✅ <b>{data['outline']['title']}</b>\n\nPowerPoint, Google Slides yoki WPS'da ochib tahrirlashingiz mumkin.\n"
+            f"✅ <b>{html.escape(data['outline']['title'])}</b>\n\nPowerPoint, Google Slides yoki WPS'da ochib tahrirlashingiz mumkin.\n"
             f"Balans: {som(db.balance(uid))}"
         ),
         reply_markup=edit_kb(order_id) or MAIN_KB,

@@ -27,7 +27,10 @@ SYSTEM = (
     "Siz O'zbekistondagi talaba va o'qituvchilar uchun taqdimot (slayd) tayyorlaydigan tajribali "
     "muallifsiz. Matn aniq, faktlarga asoslangan, akademik va tushunarli bo'lsin. "
     "Har bir punkt qisqa (8–18 so'z), takrorlanmasin, umumiy 'suv' gaplar bo'lmasin. "
-    "Raqamlar, sanalar, misollar keltiring, lekin ishonchingiz komil bo'lmagan aniq statistikani to'qimang. "
+    "Faqat berilgan mavzu doirasida yozing, bir fikrni turli slaydlarda takrorlamang. "
+    "Faqat keng ma'lum va ishonchli fakt, sana va raqamlarni keltiring; aniq qiymatni bilmasangiz, raqam o'rniga "
+    "sifat bilan tushuntiring yoki 'taxminan' deb yaxlitlang. Hech qachon statistika, iqtibos, qonun raqami, "
+    "tadqiqot yoki manba nomini o'ylab topmang. "
     "Javobni faqat so'ralgan JSON sxemasida bering."
 )
 
@@ -110,7 +113,8 @@ def clean_layout(s: dict) -> tuple[str | None, list | None]:
     if layout not in LAYOUTS:
         return None, None
     items = []
-    for it in (s.get("items") or [])[:5 if layout != "stats" else 4]:
+    raw = s.get("items")
+    for it in (raw if isinstance(raw, list) else [])[:5 if layout != "stats" else 4]:
         if not isinstance(it, dict):
             continue
         label = str(it.get("label") or "").strip()[:60]
@@ -130,9 +134,13 @@ def clean_chart(s: dict) -> dict | None:
     kind = str(s.get("chart_type") or s.get("type") or "").lower().strip()
     if kind not in ("column", "bar", "pie", "line"):
         return None
-    labels = [str(x).strip()[:40] for x in (s.get("chart_labels") or s.get("labels") or [])]
+    raw_labels = s.get("chart_labels") or s.get("labels") or []
+    raw_values = s.get("chart_values") or s.get("values") or []
+    if not isinstance(raw_labels, list) or not isinstance(raw_values, list):
+        return None
+    labels = [str(x).strip()[:40] for x in raw_labels]
     try:
-        values = [float(v) for v in (s.get("chart_values") or s.get("values") or [])]
+        values = [float(v) for v in raw_values]
     except (TypeError, ValueError):
         return None
     n = min(len(labels), len(values), 8)
@@ -373,10 +381,12 @@ async def make_outline(topic: str, lang: str, total_slides: int) -> dict:
         f"taglavha. Hammasi {LANGS[lang]} da bo'lsin."
     )
     data = await _ask_json(prompt, OUTLINE_SCHEMA, 2000)
-    slides = [s.strip() for s in data["slides"] if s.strip()][:n]
+    raw = data.get("slides") if isinstance(data, dict) else None
+    slides = [" ".join(str(s).split())[:200] for s in (raw if isinstance(raw, list) else []) if str(s).strip()][:n]
     if not slides:
-        raise AIError("Reja bo'sh chiqdi")
-    return {"title": data["title"].strip() or topic, "subtitle": data["subtitle"].strip(), "slides": slides}
+        raise AIError("AI reja tuzmadi, qayta urinib ko'ring")
+    title = " ".join(str(data.get("title") or "").split())[:300] or topic
+    return {"title": title, "subtitle": " ".join(str(data.get("subtitle") or "").split())[:300], "slides": slides}
 
 
 async def make_content(topic: str, lang: str, outline: dict, charts: bool = False) -> dict:
@@ -408,12 +418,16 @@ async def make_content(topic: str, lang: str, outline: dict, charts: bool = Fals
         )
     data = await _ask_json(prompt, _content_schema(charts), 16000)
     slides = []
+    seen: set[str] = set()
+    raw = data.get("slides") if isinstance(data, dict) else None
+    raw = raw if isinstance(raw, list) else []
     for i, title in enumerate(outline["slides"]):
-        s = data["slides"][i] if i < len(data["slides"]) else {"bullets": [], "image_query": ""}
-        bullets = [b.strip() for b in s["bullets"] if b.strip()][:6]
+        s = raw[i] if i < len(raw) and isinstance(raw[i], dict) else {}
+        bullets = clean_bullets(s.get("bullets"), seen)
         chart = clean_chart(s) if charts else None
         layout, items = clean_layout(s) if charts else (None, None)
-        slides.append({"title": s.get("title") or title, "bullets": bullets, "image_query": s.get("image_query", ""),
+        slides.append({"title": str(s.get("title") or title)[:200], "bullets": bullets,
+                       "image_query": str(s.get("image_query") or title)[:200],
                        "chart": chart, "layout": layout, "items": items})
     # Juda ko'p diagramma yoki infografika bo'lsa ortiqchasini olib tashlaymiz
     charts_seen = info_seen = 0
@@ -428,7 +442,38 @@ async def make_content(topic: str, lang: str, outline: dict, charts: bool = Fals
             if info_seen > MAX_INFOGRAPHICS or (sl["chart"] and sl["layout"] != "stats") or \
                     (sl["chart"] and sl["layout"] == "stats"):
                 sl["layout"], sl["items"] = None, None
-    return {"slides": slides, "closing": data["closing"].strip()}
+    if not any(sl["bullets"] for sl in slides):
+        raise AIError("AI to'liq javob bermadi, qayta urinib ko'ring")
+    closing = data.get("closing") if isinstance(data, dict) else ""
+    return {"slides": slides, "closing": str(closing or "").strip()[:400]}
+
+
+MAX_BULLET = 220  # belgidan uzun punkt slaydga sig'maydi
+# Bitta slayddagi jami matn. Ko'pi shriftni ~11 pt gacha maydalaydi (scripts/qa_templates.py hamma shablonda
+# shuni ko'rsatdi), shuning uchun oxirgi punktlar tashlanadi
+SLIDE_TEXT_BUDGET = 620
+
+
+def clean_bullets(items, seen: set[str] | None = None, limit: int = 6) -> list[str]:
+    """AI punktlarini tozalaydi: bo'sh, takroriy (butun taqdimot bo'yicha) va haddan tashqari uzunlarini."""
+    out = []
+    seen = seen if seen is not None else set()
+    for b in items if isinstance(items, list) else []:
+        b = " ".join(str(b).split()).lstrip("•-–* ").strip()
+        if not b:
+            continue
+        if len(b) > MAX_BULLET:
+            b = b[:MAX_BULLET].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+        key = b.lower().rstrip(".…")
+        if key in seen:
+            continue
+        if out and sum(map(len, out)) + len(b) > SLIDE_TEXT_BUDGET:
+            break
+        seen.add(key)
+        out.append(b)
+        if len(out) == limit:
+            break
+    return out
 
 
 # ---------------- DEMO rejim ----------------

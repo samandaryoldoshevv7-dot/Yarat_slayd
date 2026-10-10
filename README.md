@@ -89,6 +89,19 @@ python main.py            # bot + sayt (http://localhost:8000)
 # yoki faqat bot: python bot.py
 ```
 
+## Testlar va sifat nazorati
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest tests          # ~10 soniya; haqiqiy baza, AI, Telegram va to'lovga tegmaydi
+python scripts/qa_templates.py  # 50 shablonni tekshiradi -> data/qa/report.md va data/qa/<id>.jpg
+```
+
+Testlar tekshiradi: taqdimot yaratish va pul yechish, AI xatosida pulni **bir marta** qaytarish,
+server qayta ishga tushganda to'xtab qolgan buyurtmalar, Click callbackining takrorlanishi, chek tasdig'i,
+begona foydalanuvchi fayllariga kirish, fayl havolalari, tahrirlab saqlash (PPTX va PDF yangilanishi),
+taqdimot va akkaunt ma'lumotlarini o'chirish, AI'ning buzuq javoblari. Batafsil audit: [AUDIT.md](AUDIT.md).
+
 ## Narxlar va xarajat
 
 | Xizmat | Narxi |
@@ -117,6 +130,8 @@ python main.py            # bot + sayt (http://localhost:8000)
 | Tahrirlovchida slaydlarning haqiqiy ko'rinishi va PDF yuklab olish (LibreOffice, `Dockerfile`) | ✅ |
 | Infografika: katta raqamlar, bosqichlar, vaqt chizig'i; premium uslubdagi diagrammalar | ✅ |
 | Click orqali avtomatik to'lov (kalitlar qo'yilgach yoqiladi) | ✅ |
+| Taqdimotni yoki barcha ma'lumotlarni o'chirish, [maxfiylik siyosati](web/privacy.html) (`/privacy`) | ✅ |
+| Server qayta ishga tushsa tugallanmagan buyurtma yopiladi, pul qaytariladi va bot xabar beradi | ✅ |
 | Payme | ⏳ [GOYALAR.md](GOYALAR.md) |
 
 ## Tuzilishi
@@ -126,13 +141,16 @@ main.py                Bot + sayt birga (Railway shuni ishga tushiradi)
 bot.py                 Telegram bot (aiogram 3)
 app/web.py             Sayt serveri (FastAPI)
 web/index.html         Sayt sahifasi
+web/privacy.html       Maxfiylik siyosati (/privacy)
 web/static/            Logo, favicon va namuna slaydlar (scripts/make_showcase.py yasaydi)
 app/ai.py              AI: Gemini / Claude / DEMO
 app/images.py          Rasmlar: Pollinations / Pexels
 app/pptx_builder.py    Shablon asosida .pptx yig'ish
 app/service.py         Umumiy generatsiya (bot va sayt uchun)
 app/db.py              SQLite: foydalanuvchilar, balans, buyurtmalar, to'lovlar, sayt sessiyalari
-templates/             50 ta .pptx shablon
+templates/             50 ta .pptx shablon (litsenziyasi tekshirilishi kerak — AUDIT.md)
+tests/                 Avtomatik testlar (pytest)
+scripts/qa_templates.py  Shablonlarni avtomatik tekshirish
 previews/              Shablonlarning ko'rinish rasmlari
 web/old_frontend.html  Eski sayt (AI'siz namuna, ishlatilmaydi)
 ```
