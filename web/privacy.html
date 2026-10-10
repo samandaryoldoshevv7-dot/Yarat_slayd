@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Maxfiylik siyosati — YaratSlayd</title>
+<link rel="icon" href="/favicon.ico" />
+<style>
+  :root { --ink: #0A0F0B; --muted: #5E6A62; --line: #E3E7E1; --bg: #F6F7F3; --green: #0B7A40; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.65 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; }
+  a { color: var(--green); }
+  .back { display: inline-block; margin-bottom: 24px; font-weight: 600; text-decoration: none; }
+  h1 { font-size: 32px; line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.02em; }
+  h2 { font-size: 19px; margin: 32px 0 8px; }
+  .meta { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+  ul { padding-left: 20px; }
+  li { margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #EEF1EC; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  .box { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  @media (max-width: 560px) { table, thead, tbody, tr, th, td { display: block; } thead { display: none; } td { border-bottom: 0; padding: 4px 12px; } tr { border-bottom: 1px solid var(--line); padding: 8px 0; } td:first-child { font-weight: 700; } }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="/">← YaratSlayd</a>
+  <h1>Maxfiylik siyosati</h1>
+  <p class="meta">Oxirgi yangilanish: 2026-yil 10-oktabr</p>
+
+  <p>Bu sahifa YaratSlayd sayti va Telegram boti qanday ma'lumotlarni saqlashini, ular nima uchun kerakligini,
+  kimga uzatilishini va ularni qanday o'chirishingiz mumkinligini tushuntiradi.</p>
+
+  <h2>Qanday ma'lumot saqlanadi</h2>
+  <table>
+    <thead><tr><th>Ma'lumot</th><th>Nima uchun</th><th>Qancha saqlanadi</th></tr></thead>
+    <tbody>
+      <tr><td>Telegram ID, ism, username</td><td>Sizni tanish, balansni bot va sayt o'rtasida umumiy qilish</td><td>Ism va username — o'chirishni so'ragunizcha. Telegram ID va balans — hisob-kitob uchun saqlanadi</td></tr>
+      <tr><td>Taqdimot mavzusi, reja, matn, rasmlar va fayllar</td><td>Faylni tayyorlash, keyin tahrirlash va qayta yuklab olish</td><td>O'zingiz o'chirgunizcha</td></tr>
+      <tr><td>Balans va to'lovlar (summa, sana, chek rasmi Telegram'da)</td><td>To'lovni tasdiqlash, pulni qaytarish, hisob-kitob</td><td>Hisob-kitob uchun saqlanadi</td></tr>
+      <tr><td>Sayt sessiyasi</td><td>Saytda kirgan holatda qolish</td><td>30 kun yoki «Chiqish»gacha</td></tr>
+      <tr><td>Kirish kodi</td><td>Saytga Telegram orqali kirish</td><td>2 daqiqa, bir marta ishlatiladi</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Kimga uzatiladi</h2>
+  <ul>
+    <li><b>AI xizmati</b> (Google Gemini; zaxira sifatida Groq yoki Anthropic Claude ulanishi mumkin) — mavzu, reja va tanlangan til
+      matn yozish uchun yuboriladi. Telegram ID va ismingiz yuborilmaydi.</li>
+    <li><b>Rasm xizmati</b> (Pollinations yoki Pexels) — slayd uchun inglizcha qisqa rasm tavsifi yuboriladi.</li>
+    <li><b>Telegram</b> — bot orqali xabar va tayyor fayl yuborish uchun.</li>
+    <li><b>Click</b> — Click orqali to'lasangiz, to'lov summasi va buyurtma raqami.</li>
+  </ul>
+  <p>Ma'lumotlaringiz sotilmaydi va reklama uchun ishlatilmaydi. Server Railway xosting xizmatida joylashgan.</p>
+
+  <h2>Maxfiy ma'lumot yubormang</h2>
+  <p>Mavzu va matn AI xizmatiga yuboriladi. Shuning uchun parol, pasport ma'lumotlari, tibbiy yoki tijorat siri kabi
+  ma'lumotlarni mavzuga yozmang.</p>
+
+  <h2>Taqdimotlaringizni kim ko'radi</h2>
+  <p>Fayllar faqat sizning hisobingizga bog'langan: boshqa foydalanuvchi ularni ocha olmaydi. Texnik nosozlikni tekshirish uchun
+  sayt administratori buyurtmalar ro'yxatini (mavzu, sana, holat) ko'ra oladi.</p>
+
+  <h2>Ma'lumotlarni qanday o'chirish mumkin</h2>
+  <div class="box">
+    <ul>
+      <li><b>Bitta taqdimot:</b> saytda «Mening taqdimotlarim» ro'yxatida ✕ tugmasi — fayl, rasmlar va matn serverdan o'chadi.</li>
+      <li><b>Hammasi:</b> «Mening taqdimotlarim» ostidagi «Barcha ma'lumotlarimni o'chirish» — barcha taqdimotlar, ism va username
+        o'chadi, saytdagi sessiyalar yopiladi. Balansingiz saqlanib qoladi.</li>
+      <li>Savol bo'lsa, Telegram botga yozing.</li>
+    </ul>
+  </div>
+
+  <h2>AI yozgan matn haqida</h2>
+  <p>Taqdimot matnini AI yozadi. U sana, raqam yoki faktni xato yozishi mumkin. Taqdimotni topshirishdan oldin muhim ma'lumotlarni
+  ishonchli manba bilan tekshiring.</p>
+</main>
+</body>
+</html>

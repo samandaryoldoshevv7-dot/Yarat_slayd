@@ -4,6 +4,7 @@ Kirish: sayt token yaratadi -> foydalanuvchi t.me/<bot>?start=weblogin_<token> n
 bot tokenni tasdiqlaydi -> sayt buni ko'rib, sessiya cookie beradi.
 """
 import asyncio
+import html
 import io
 import logging
 import secrets
@@ -18,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import admin, ai, click, config, db, images, notify, service, templates, tg_auth
-from .sessions import COOKIE, current_user, require_user, session_token
+from .sessions import COOKIE, current_user, file_token, require_file_user, require_user, session_token
 
 log = logging.getLogger("web")
 app = FastAPI(title="YaratSlayd", docs_url=None, redoc_url=None)
@@ -79,6 +80,21 @@ def _rate_ok(key: str) -> bool:
     return True
 
 
+_user_hits: dict[tuple, deque] = defaultdict(deque)
+# Qimmat amallar uchun soatlik limitlar (AI rasm, fayl yuklash, qayta yig'ish — LibreOffice)
+LIMITS = {"ai_image": 20, "upload": 40, "save": 60}
+
+
+def _limit(kind: str, uid: int) -> None:
+    now = time.time()
+    q = _user_hits[(kind, uid)]
+    while q and now - q[0] > 3600:
+        q.popleft()
+    if len(q) >= LIMITS[kind]:
+        raise HTTPException(429, "Bu amal uchun soatlik limit tugadi. Birozdan so'ng qayta urinib ko'ring.")
+    q.append(now)
+
+
 class PlanIn(BaseModel):
     topic: str = Field(min_length=3, max_length=300)
     lang: str = Field(pattern="^(uz|ru|en)$")
@@ -124,7 +140,7 @@ def me(request: Request):
     user = db.get_user(uid) if uid else None
     if not user:
         return {"logged_in": False}
-    return {"logged_in": True, "name": user["full_name"], "balance": user["balance"]}
+    return {"logged_in": True, "name": user["full_name"], "balance": user["balance"], "ft": file_token(uid)}
 
 
 @app.post("/api/login/start")
@@ -225,28 +241,31 @@ async def plan(body: PlanIn, request: Request):
         return await ai.make_outline(body.topic.strip(), body.lang, body.slides)
     except ai.AIError as e:
         raise HTTPException(502, str(e))
+    except Exception:
+        log.exception("Reja tuzishda kutilmagan xato")
+        raise HTTPException(502, "AI javobini o'qib bo'lmadi. Bir daqiqadan so'ng qayta urinib ko'ring.")
 
 
 @app.post("/api/generate")
 async def generate(body: GenerateIn, request: Request):
     uid = require_user(request)
-    if any(j["user_id"] == uid and j["status"] == "working" for j in jobs.values()):
+    if db.user_has_pending(uid):
         raise HTTPException(409, "Oldingi taqdimot hali tayyorlanmoqda")
     if not templates.get(body.template):
         raise HTTPException(400, "Bunday dizayn yo'q")
     price = config.PRICE_PRESENTATION
-    if not db.charge(uid, price):
-        raise HTTPException(402, "Balansda mablag' yetarli emas")
-
     outline = body.outline.model_dump()
-    order_id = db.create_order(uid, body.topic.strip(), body.lang, body.slides, body.template, price)
-    job_id = secrets.token_urlsafe(12)
+    order_id = db.start_order(uid, body.topic.strip(), body.lang, body.slides, body.template, price)
+    if order_id is None:
+        raise HTTPException(402, "Balansda mablag' yetarli emas")
+    job_id = str(order_id)
     jobs[job_id] = {"user_id": uid, "status": "working", "step": "Boshlandi...", "order_id": order_id}
 
     async def progress(text: str):
         jobs[job_id]["step"] = text
 
     async def run():
+        started = time.monotonic()
         try:
             path = await service.generate(order_id, body.topic.strip(), body.lang, outline, body.template, progress,
                                           charts=body.charts)
@@ -255,15 +274,16 @@ async def generate(body: GenerateIn, request: Request):
             if project:
                 await service.ensure_preview(order_id, project, path)
             db.finish_order(order_id, "done", str(path))
+            log.info("Buyurtma %s tayyor: %d slayd, %.1f s", order_id, body.slides, time.monotonic() - started)
             jobs[job_id].update(status="done", step="Tayyor!", title=outline["title"])
             # Sayt va bot bitta: fayl Telegram'ga ham yuboriladi
-            await notify.send_file(uid, path, f"✅ {outline['title']}\n(saytda tayyorlandi)")
+            await notify.send_file(uid, path, f"✅ {html.escape(outline['title'])}\n(saytda tayyorlandi)")
         except Exception as e:
             log.exception("Sayt generatsiya xatosi (order %s)", order_id)
-            db.finish_order(order_id, "failed")
-            db.add_balance(uid, price)
+            refunded = db.fail_order(order_id)
             reason = str(e) if isinstance(e, ai.AIError) else "texnik xatolik"
-            jobs[job_id].update(status="failed", step=f"Kechirasiz, {reason}. Pul balansga qaytarildi.")
+            back = " Pul balansga qaytarildi." if refunded else ""
+            jobs[job_id].update(status="failed", step=f"Kechirasiz, {reason}.{back}")
 
     task = asyncio.create_task(run())
     _tasks.add(task)
@@ -275,6 +295,14 @@ async def generate(body: GenerateIn, request: Request):
 def job_status(job_id: str, request: Request):
     uid = require_user(request)
     job = jobs.get(job_id)
+    if job is None and job_id.isdigit():
+        # Server qayta ishga tushgan bo'lsa holat xotirada yo'q — bazadan olinadi
+        order = db.get_order(int(job_id))
+        if order and order["user_id"] == uid:
+            status = {"done": "done", "pending": "working"}.get(order["status"], "failed")
+            job = {"user_id": uid, "status": status, "order_id": order["id"], "title": order["topic"],
+                   "step": {"done": "Tayyor!", "working": "Tayyorlanmoqda..."}.get(
+                       status, "Taqdimot tayyorlanmadi. Pul balansga qaytarildi.")}
     if not job or job["user_id"] != uid:
         raise HTTPException(404, "Topilmadi")
     out = {k: job.get(k) for k in ("status", "step", "order_id", "title")}
@@ -296,7 +324,7 @@ def orders(request: Request):
 
 @app.get("/api/download/{order_id}")
 def download(order_id: int, request: Request):
-    uid = require_user(request)
+    uid = require_file_user(request)
     order = db.get_order(order_id)
     if not order or order["user_id"] != uid or order["status"] != "done" or not order["file_path"]:
         raise HTTPException(404, "Fayl topilmadi")
@@ -304,6 +332,31 @@ def download(order_id: int, request: Request):
     if not path.exists():
         raise HTTPException(404, "Fayl serverdan o'chirilgan")
     return FileResponse(path, filename=f"{service.safe_filename(order['topic'])}.pptx")
+
+
+@app.delete("/api/orders/{order_id}")
+def delete_order(order_id: int, request: Request):
+    """Foydalanuvchi o'z taqdimotini butunlay o'chiradi: fayllar, rasmlar va matn."""
+    uid = require_user(request)
+    order = db.get_order(order_id)
+    if not order or not db.delete_order(order_id, uid):
+        raise HTTPException(404, "Taqdimot topilmadi")
+    if order["file_path"]:
+        Path(order["file_path"]).unlink(missing_ok=True)  # eski usulda papkadan tashqarida saqlangan fayllar
+    service.delete_project(order_id)
+    return {"ok": True}
+
+
+@app.delete("/api/account")
+def delete_account(request: Request, response: Response):
+    """Barcha taqdimotlar va shaxsiy ma'lumotlarni o'chiradi (maxfiylik siyosatiga qarang)."""
+    uid = require_user(request)
+    if db.user_has_pending(uid):
+        raise HTTPException(409, "Taqdimot tayyorlanmoqda. U tugagach qayta urinib ko'ring.")
+    for order_id in db.delete_account_data(uid):
+        service.delete_project(order_id)
+    response.delete_cookie(COOKIE)
+    return {"ok": True}
 
 
 # ---------------- Tayyor taqdimotni tahrirlash ----------------
@@ -325,12 +378,12 @@ async def get_project(order_id: int, request: Request):
     imgs = service.load_images(order_id, len(project["content"]["slides"]))
     previews = await service.ensure_preview(order_id, project)
     return {**project, "images": [img is not None for img in imgs], "fonts_list": FONTS,
-            "font_presets": FONT_PRESETS, "previews": previews}
+            "font_presets": FONT_PRESETS, "previews": previews, "ft": file_token(uid)}
 
 
 @app.get("/api/orders/{order_id}/preview/{n}")
 def get_preview(order_id: int, n: int, request: Request):
-    uid = require_user(request)
+    uid = require_file_user(request)
     project = _own_project(order_id, uid)
     path = service.preview_dir(order_id, int(project.get("version", 1))) / f"{n}.jpg"
     if not path.exists():
@@ -340,7 +393,7 @@ def get_preview(order_id: int, n: int, request: Request):
 
 @app.get("/api/orders/{order_id}/pdf")
 def get_pdf(order_id: int, request: Request):
-    uid = require_user(request)
+    uid = require_file_user(request)
     project = _own_project(order_id, uid)
     path = service.preview_dir(order_id, int(project.get("version", 1))) / "deck.pdf"
     if not path.exists():
@@ -355,13 +408,13 @@ async def send_to_telegram(order_id: int, request: Request):
     order = db.get_order(order_id)
     if not notify.bot:
         raise HTTPException(503, "Telegram bot ulanmagan")
-    await notify.send_file(uid, Path(order["file_path"]), f"✅ {project['outline']['title']}")
+    await notify.send_file(uid, Path(order["file_path"]), f"✅ {html.escape(project['outline']['title'])}")
     return {"ok": True}
 
 
 @app.get("/api/orders/{order_id}/image/{index}")
 def get_image(order_id: int, index: int, request: Request):
-    uid = require_user(request)
+    uid = require_file_user(request)
     _own_project(order_id, uid)
     path = service.project_dir(order_id) / f"img_{index}.jpg"
     if not path.exists():
@@ -389,6 +442,7 @@ async def upload_image(order_id: int, index: int, request: Request, file: Upload
     project = _own_project(order_id, uid)
     if not 0 <= index < len(project["content"]["slides"]):
         raise HTTPException(400, "Noto'g'ri slayd")
+    _limit("upload", uid)
     data = await file.read(MAX_UPLOAD + 1)
     if len(data) > MAX_UPLOAD:
         raise HTTPException(400, "Rasm juda katta (8 MB gacha)")
@@ -406,6 +460,7 @@ async def ai_image(order_id: int, index: int, body: ImageQuery, request: Request
     project = _own_project(order_id, uid)
     if not 0 <= index < len(project["content"]["slides"]):
         raise HTTPException(400, "Noto'g'ri slayd")
+    _limit("ai_image", uid)
     got = (await images.fetch_images([body.query]))[0]
     if not got:
         raise HTTPException(502, "Rasm topilmadi yoki xizmat javob bermadi. Boshqa so'z bilan urinib ko'ring.")
@@ -463,6 +518,7 @@ async def save_project(order_id: int, body: SaveIn, request: Request):
         raise HTTPException(400, "Slaydlar soni mos emas, sahifani yangilang")
     if not templates.get(body.template):
         raise HTTPException(400, "Bunday dizayn yo'q")
+    _limit("save", uid)
     fonts = {k: v for k, v in body.fonts.items() if k in ("title", "body") and v in FONTS}
     if body.font_preset in FONT_PRESETS_BY_ID:
         fonts = {k: v for k, v in FONT_PRESETS_BY_ID[body.font_preset].items() if k in ("title", "body")}
@@ -497,6 +553,11 @@ async def save_project(order_id: int, body: SaveIn, request: Request):
 
 app.mount("/previews", StaticFiles(directory=config.PREVIEWS_DIR), name="previews")
 app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
+
+
+@app.get("/privacy")
+def privacy():
+    return FileResponse(WEB_DIR / "privacy.html")
 
 
 @app.get("/favicon.ico")

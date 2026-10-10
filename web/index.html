@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>YaratSlayd — g'oyangizdan tayyor taqdimotgacha</title>
-<meta name="description" content="Mavzuni yozing, rejani ko'rib chiqing va 50 ta dizayndan birini tanlang. Tahrirlanadigan PowerPoint taqdimot 1–2 daqiqada tayyor." />
+<meta name="description" content="Mavzuni yozing, rejani ko'rib chiqing va 50 ta dizayndan birini tanlang. Tahrirlanadigan PowerPoint va PDF taqdimot." />
 <meta property="og:title" content="YaratSlayd — g'oyangizdan tayyor taqdimotgacha" />
-<meta property="og:description" content="Tahrirlanadigan PowerPoint taqdimot 1–2 daqiqada. Reja bepul." />
+<meta property="og:description" content="Tahrirlanadigan PowerPoint taqdimot. Reja bepul." />
 <meta property="og:image" content="/static/showcase/eco-cover.jpg" />
 <meta name="theme-color" content="#0A0F0B" />
 <link rel="icon" type="image/png" href="/static/favicon.png" />
@@ -230,6 +230,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .order-row:last-child { border-bottom: 0; }
 .order-t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .order-row small { color: var(--muted); }
+.order-row > div { flex: 1 1 auto; }
+@media (max-width: 560px) {
+  .order-row { flex-wrap: wrap; }
+  .order-row > div { flex-basis: 100%; }
+}
 
 /* ============ Diagramma tugmasi ============ */
 .chart-toggle { height: 44px; border-radius: 12px; background: var(--bg); border-color: var(--bg-2); }
@@ -553,6 +558,12 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 h1, h2, .h2 { font-family: var(--font-display); letter-spacing: -0.035em; }
 .h2 { font-weight: 700; font-size: clamp(26px, 3.4vw, 40px); line-height: 1.12; }
 .kicker { color: var(--green-700); }
+.btn.icon-only { padding: 0 10px; }
+.privacy-line { margin-top: 12px; font-size: 13.5px; color: var(--muted); }
+.privacy-line a, .link-btn { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+.link-btn { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.link-btn:hover { color: var(--danger); }
+.ed-note { margin: 0; padding: 10px 24px; font-size: 13.5px; color: #6B4E00; background: #FFF8E6; border-bottom: 1px solid #F3E3B5; }
 .btn-primary { background: var(--green); color: var(--on-green); box-shadow: 0 1px 0 rgba(255,255,255,.35) inset, 0 10px 24px -10px rgba(25,196,106,.75); }
 .btn-primary:hover { background: #2AD47A; }
 .btn-primary:active { background: var(--green-600); }
@@ -603,13 +614,13 @@ h1, h2, .h2 { font-family: var(--font-display); letter-spacing: -0.035em; }
 .hero-note { color: var(--on-dark-2); }
 .hero-note svg { color: var(--green); }
 
-/* Jonli namoyish oynasi */
+/* Namuna taqdimot oynasi */
 .demo { position: relative; background: var(--dark-2); border: 1px solid var(--dark-line); border-radius: 22px; box-shadow: 0 40px 100px -40px rgba(0,0,0,.9), 0 0 0 1px rgba(25,196,106,.08), 0 0 80px -20px rgba(25,196,106,.25); overflow: hidden; }
 .demo-top { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid var(--dark-line); color: var(--on-dark-2); font-size: 12.5px; font-weight: 600; }
 .demo-top i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.14); }
 .demo-top span { margin-left: 8px; }
 .demo-top .live { margin-left: auto; font-style: normal; font-size: 11px; color: #7DEBAA; display: inline-flex; align-items: center; gap: 6px; }
-.demo-top .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: blink 1.2s steps(1) infinite; }
+.demo-top .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
 .demo-body { padding: 16px; display: grid; gap: 12px; }
 .demo-input { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--dark-3); border: 1px solid var(--dark-line); color: #fff; font-size: 15px; min-height: 48px; overflow: hidden; white-space: nowrap; }
 .demo-input .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--green); flex: none; }
@@ -804,8 +815,8 @@ footer.site-footer .foot-bottom { border-top-color: var(--dark-line); }
         </div>
       </div>
 
-      <div class="demo reveal" aria-label="Jonli namoyish: mavzudan tayyor taqdimotgacha">
-        <div class="demo-top"><i></i><i></i><i></i><span>YaratSlayd Studio</span><em class="live">jonli</em></div>
+      <div class="demo reveal" aria-label="Namuna: mavzudan tayyor taqdimotgacha (oldindan tayyorlangan slaydlar)">
+        <div class="demo-top"><i></i><i></i><i></i><span>YaratSlayd Studio</span><em class="live">namuna</em></div>
         <div class="demo-body">
           <div class="demo-input"><span class="lbl">Mavzu</span><span class="typed" id="demoTyped"></span><span class="caret"></span></div>
           <div class="demo-steps" id="demoSteps"><span>Reja</span><span>Matn</span><span>Rasm va diagramma</span><span>Dizayn</span></div>
@@ -820,10 +831,10 @@ footer.site-footer .foot-bottom { border-top-color: var(--dark-line); }
   <!-- ============ DIZAYNLAR LENTASI ============ -->
   <section class="ribbon" aria-label="Dizaynlar va raqamlar">
     <div class="container stats-row">
-      <div><b>50</b><span>professional dizayn</span></div>
+      <div><b>50</b><span>dizayn shabloni</span></div>
       <div><b>7</b><span>uslub turkumi</span></div>
       <div><b>3</b><span>til: uz · ru · en</span></div>
-      <div><b>1–2</b><span>daqiqada tayyor</span></div>
+      <div><b>5–20</b><span>slayd, siz tanlaysiz</span></div>
       <div><b>PPTX</b><span>va PDF, tahrirlanadi</span></div>
     </div>
     <div class="marquee" id="marquee" aria-hidden="true">
@@ -879,7 +890,7 @@ footer.site-footer .foot-bottom { border-top-color: var(--dark-line); }
         <div class="work" id="workView" hidden aria-live="polite">
           <div id="progressBox">
             <h3>Taqdimot tayyorlanmoqda</h3>
-            <p>Odatda 1–2 daqiqa davom etadi. Sahifani yopmang.</p>
+            <p>Bir necha daqiqa davom etishi mumkin. Sahifani yopsangiz ham fayl Telegram botga keladi.</p>
             <ul class="steps-live" id="stepsLive">
               <li data-k="text"><span class="dot"></span>Slayd matnlari yozilmoqda</li>
               <li data-k="img"><span class="dot"></span>Mavzuga mos rasmlar tayyorlanmoqda</li>
@@ -935,6 +946,7 @@ footer.site-footer .foot-bottom { border-top-color: var(--dark-line); }
           </div>
         </div>
         <div class="font-cards" id="fontCards" hidden role="listbox" aria-label="Shrift uslubini tanlang"></div>
+        <p class="ed-note" role="note"><b>Topshirishdan oldin tekshiring:</b> matnni AI yozgan. Sana, raqam, ism va diagrammadagi qiymatlar xato bo'lishi mumkin — muhimlarini ishonchli manba bilan solishtiring.</p>
         <div class="ed-body">
           <nav class="ed-list" id="edList" aria-label="Slaydlar"></nav>
           <div class="ed-main">
@@ -952,6 +964,7 @@ footer.site-footer .foot-bottom { border-top-color: var(--dark-line); }
     <div class="container">
       <div class="section-head"><h2 class="h2" style="font-size:30px">Mening taqdimotlarim</h2><p class="lead" style="font-size:16px">Telegram botda yaratganlaringiz ham shu yerda.</p></div>
       <div class="card" id="orderList" style="padding:8px 20px"></div>
+      <p class="privacy-line">Taqdimotlaringizni faqat siz ko'rasiz. <a href="/privacy" target="_blank" rel="noopener">Maxfiylik siyosati</a> · <button type="button" class="link-btn" id="deleteAccount">Barcha ma'lumotlarimni o'chirish</button></p>
     </div>
   </section>
 
@@ -1225,6 +1238,7 @@ footer.site-footer .foot-bottom { border-top-color: var(--dark-line); }
         <ul>
           <li><a href="#faq">Savol-javob</a></li>
           <li><a id="botFooter" href="#" target="_blank" rel="noopener">Telegram bot</a></li>
+          <li><a href="/privacy">Maxfiylik siyosati</a></li>
         </ul>
       </div>
     </div>
@@ -1287,7 +1301,8 @@ function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 function loading(btn, on) { btn.classList.toggle("is-loading", on); btn.disabled = on; btn.setAttribute("aria-busy", on ? "true" : "false"); }
 let toastTimer;
 function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200); }
-const withSession = (path) => (state.session ? path + (path.includes("?") ? "&" : "?") + "s=" + encodeURIComponent(state.session) : path);
+// Telegram ichida (cookie'siz) fayl havolasiga sessiya emas, 2 soatlik faqat-o'qish tokeni qo'shiladi
+const withSession = (path) => (state.session && state.ft ? path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(state.ft) : path);
 const botUrl = () => (state.cfg && state.cfg.bot ? "https://t.me/" + state.cfg.bot : null);
 const tplIndex = (id) => state.cfg.templates.findIndex((t) => t.id === id) + 1;
 const catName = (c) => state.cfg.categories[c] || c;
@@ -1312,7 +1327,7 @@ function renderMe() {
     : m.balance >= price ? "Balansingiz: " + som(m.balance) + " so'm" : "Balans yetarli emas: " + som(m.balance) + " so'm";
   updateGenBtn();
 }
-async function refreshMe() { state.me = await api("/api/me").catch(() => ({ logged_in: false })); renderMe(); }
+async function refreshMe() { state.me = await api("/api/me").catch(() => ({ logged_in: false })); state.ft = state.me.ft || ""; renderMe(); }
 
 async function loadOrders() {
   const box = $("orderList");
@@ -1324,7 +1339,8 @@ async function loadOrders() {
       <div style="min-width:0"><div class="order-t">${esc(o.topic)}</div>
       <small>${o.slides} slayd · ${esc(o.created_at.slice(0, 16))}</small></div>
       <span style="display:flex;gap:6px;flex:none">${o.editable ? `<button class="btn btn-tertiary btn-sm" type="button" data-edit="${o.id}"><svg><use href="#i-edit"/></svg>Tahrirlash</button>` : ""}
-      <a class="btn btn-secondary btn-sm" data-dl="${esc(o.topic)}" href="${withSession(o.download)}"><svg><use href="#i-down"/></svg>Yuklab olish</a></span>
+      <a class="btn btn-secondary btn-sm" data-dl="${esc(o.topic)}" href="${withSession(o.download)}"><svg><use href="#i-down"/></svg>Yuklab olish</a>
+      <button class="btn btn-tertiary btn-sm icon-only" type="button" data-del="${o.id}" data-name="${esc(o.topic)}" aria-label="O'chirish" title="O'chirish"><svg><use href="#i-x"/></svg></button></span>
     </div>`).join("");
 }
 
@@ -1652,6 +1668,7 @@ async function openEditor(orderId) {
   $("editor").scrollIntoView({ behavior: "smooth", block: "start" });
   try {
     const p = await api(`/api/orders/${orderId}/project`);
+    if (p.ft) state.ft = p.ft;
     ed.id = orderId; ed.p = p; ed.images = p.images; ed.cur = "cover"; ed.v = Date.now(); ed.previews = p.previews; ed.dirty = false;
     p.content.slides.forEach((sl) => { if (!sl.bullets.length) sl.bullets = [""]; });
     $("edTitle").textContent = p.outline.title;
@@ -1903,6 +1920,19 @@ $("fontCards").addEventListener("click", (e) => {
 });
 $("edClose").addEventListener("click", () => { $("editor").hidden = true; });
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-edit]"); if (b) openEditor(+b.dataset.edit); });
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-del]");
+  if (!b) return;
+  const text = "«" + b.dataset.name + "» taqdimoti, uning rasmlari va matni serverdan butunlay o'chirilsinmi? Buni qaytarib bo'lmaydi.";
+  const yes = TG && TG.showConfirm ? await new Promise((r) => TG.showConfirm(text, r)) : confirm(text);
+  if (!yes) return;
+  b.disabled = true;
+  try {
+    await api("/api/orders/" + b.dataset.del, { method: "DELETE" });
+    toast("Taqdimot o'chirildi.");
+    loadOrders();
+  } catch (err) { b.disabled = false; toast(err.message); }
+});
 $("chartsToggle").addEventListener("click", (e) => { const b = e.currentTarget; b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true")); });
 
 // ---------- Oldin / keyin ----------
@@ -1913,7 +1943,7 @@ function setBA(showSlides) {
   $("viewPlain").classList.toggle("off", showSlides);
 }
 
-// ---------- Bosh sahifa: dizaynlar lentasi va jonli namoyish ----------
+// ---------- Bosh sahifa: dizaynlar lentasi va namuna taqdimot (oldindan tayyorlangan rasmlar) ----------
 function renderMarquee() {
   const list = (state.cfg.templates || []).map((t) => t.id);
   if (!list.length) return;
@@ -2101,6 +2131,17 @@ $("loginBtn").addEventListener("click", () => login());
 $("loginBtnM").addEventListener("click", () => { $("mobilePanel").classList.remove("open"); login(); });
 $("loginClose").addEventListener("click", () => { state.pendingGenerate = false; closeLogin(); });
 $("loginModal").addEventListener("click", (e) => { if (e.target === $("loginModal")) { state.pendingGenerate = false; closeLogin(); } });
+$("deleteAccount").addEventListener("click", async () => {
+  const text = "Barcha taqdimotlaringiz, rasmlar va ismingiz serverdan o'chiriladi, saytdan chiqasiz. Balans saqlanib qoladi. Davom etilsinmi?";
+  const yes = TG && TG.showConfirm ? await new Promise((r) => TG.showConfirm(text, r)) : confirm(text);
+  if (!yes) return;
+  try {
+    await api("/api/account", { method: "DELETE" });
+    state.session = null;
+    await refreshMe();
+    toast("Ma'lumotlaringiz o'chirildi.");
+  } catch (err) { toast(err.message); }
+});
 $("logoutBtn").addEventListener("click", async () => { await api("/api/logout", { method: "POST" }).catch(() => {}); $("profileMenu").hidden = true; await refreshMe(); toast("Hisobdan chiqdingiz."); });
 $("avatarBtn").addEventListener("click", (e) => {
   e.stopPropagation();
