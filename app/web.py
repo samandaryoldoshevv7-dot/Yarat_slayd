@@ -4,6 +4,7 @@ Kirish: sayt token yaratadi -> foydalanuvchi t.me/<bot>?start=weblogin_<token> n
 bot tokenni tasdiqlaydi -> sayt buni ko'rib, sessiya cookie beradi.
 """
 import asyncio
+import io
 import logging
 import secrets
 import time
@@ -11,12 +12,12 @@ from collections import defaultdict, deque
 from pathlib import Path
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import admin, ai, click, config, db, notify, service, templates, tg_auth
+from . import admin, ai, click, config, db, images, notify, service, templates, tg_auth
 from .sessions import COOKIE, current_user, require_user, session_token
 
 log = logging.getLogger("web")
@@ -28,6 +29,11 @@ WEB_DIR = config.ROOT / "web"
 # Fon vazifalari: job_id -> holat (server qayta ishga tushsa yo'qoladi, fayllar esa DB'da qoladi)
 jobs: dict[str, dict] = {}
 _tasks: set[asyncio.Task] = set()  # create_task natijasi GC tomonidan yo'qolmasligi uchun
+
+MAX_UPLOAD = 8 * 1024 * 1024
+# Windows/Mac'da odatda o'rnatilgan shriftlar ("" — shablonning o'z shrifti)
+FONTS = ["", "Calibri", "Arial", "Segoe UI", "Verdana", "Tahoma", "Trebuchet MS", "Century Gothic",
+         "Georgia", "Cambria", "Times New Roman", "Bahnschrift", "Candara", "Corbel"]
 
 # Ro'yxatdan o'tmaganlar uchun reja limiti (bepul AI limitini himoya qiladi)
 _plan_hits: dict[str, deque] = defaultdict(deque)
@@ -71,6 +77,7 @@ class Outline(BaseModel):
 class GenerateIn(PlanIn):
     template: str = Field(pattern=r"^\d{2}$")
     outline: Outline
+    charts: bool = False
 
 
 # ---------------- API ----------------
@@ -201,7 +208,8 @@ async def generate(body: GenerateIn, request: Request):
 
     async def run():
         try:
-            path = await service.generate(order_id, body.topic.strip(), body.lang, outline, body.template, progress)
+            path = await service.generate(order_id, body.topic.strip(), body.lang, outline, body.template, progress,
+                                          charts=body.charts)
             db.finish_order(order_id, "done", str(path))
             jobs[job_id].update(status="done", step="Tayyor!", title=outline["title"])
             # Sayt va bot bitta: fayl Telegram'ga ham yuboriladi
@@ -236,7 +244,8 @@ def orders(request: Request):
     uid = require_user(request)
     return [
         {"id": o["id"], "topic": o["topic"], "slides": o["slides"], "created_at": o["created_at"],
-         "download": f"/api/download/{o['id']}"}
+         "download": f"/api/download/{o['id']}",
+         "editable": (service.project_dir(o["id"]) / "project.json").exists()}
         for o in db.user_orders(uid, 30)
     ]
 
@@ -251,6 +260,142 @@ def download(order_id: int, request: Request):
     if not path.exists():
         raise HTTPException(404, "Fayl serverdan o'chirilgan")
     return FileResponse(path, filename=f"{service.safe_filename(order['topic'])}.pptx")
+
+
+# ---------------- Tayyor taqdimotni tahrirlash ----------------
+
+def _own_project(order_id: int, uid: int) -> dict:
+    order = db.get_order(order_id)
+    if not order or order["user_id"] != uid or order["status"] != "done":
+        raise HTTPException(404, "Taqdimot topilmadi")
+    project = service.load_project(order_id)
+    if project is None:
+        raise HTTPException(409, "Bu taqdimot eski usulda yaratilgan, uni tahrirlab bo'lmaydi. Yangisini yarating.")
+    return project
+
+
+@app.get("/api/orders/{order_id}/project")
+def get_project(order_id: int, request: Request):
+    uid = require_user(request)
+    project = _own_project(order_id, uid)
+    imgs = service.load_images(order_id, len(project["content"]["slides"]))
+    return {**project, "images": [img is not None for img in imgs], "fonts_list": FONTS}
+
+
+@app.get("/api/orders/{order_id}/image/{index}")
+def get_image(order_id: int, index: int, request: Request):
+    uid = require_user(request)
+    _own_project(order_id, uid)
+    path = service.project_dir(order_id) / f"img_{index}.jpg"
+    if not path.exists():
+        raise HTTPException(404, "Rasm yo'q")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+def _normalize_image(data: bytes) -> bytes:
+    from PIL import Image, UnidentifiedImageError
+
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            im = im.convert("RGB")
+            im.thumbnail((1600, 1600))
+            buf = io.BytesIO()
+            im.save(buf, "JPEG", quality=88)
+            return buf.getvalue()
+    except (UnidentifiedImageError, OSError):
+        raise HTTPException(400, "Bu fayl rasm emas. JPG yoki PNG yuklang.")
+
+
+@app.post("/api/orders/{order_id}/image/{index}")
+async def upload_image(order_id: int, index: int, request: Request, file: UploadFile = File(...)):
+    uid = require_user(request)
+    project = _own_project(order_id, uid)
+    if not 0 <= index < len(project["content"]["slides"]):
+        raise HTTPException(400, "Noto'g'ri slayd")
+    data = await file.read(MAX_UPLOAD + 1)
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(400, "Rasm juda katta (8 MB gacha)")
+    service.save_image(order_id, index, _normalize_image(data))
+    return {"ok": True}
+
+
+class ImageQuery(BaseModel):
+    query: str = Field(min_length=2, max_length=120)
+
+
+@app.post("/api/orders/{order_id}/image/{index}/ai")
+async def ai_image(order_id: int, index: int, body: ImageQuery, request: Request):
+    uid = require_user(request)
+    project = _own_project(order_id, uid)
+    if not 0 <= index < len(project["content"]["slides"]):
+        raise HTTPException(400, "Noto'g'ri slayd")
+    got = (await images.fetch_images([body.query]))[0]
+    if not got:
+        raise HTTPException(502, "Rasm topilmadi yoki xizmat javob bermadi. Boshqa so'z bilan urinib ko'ring.")
+    service.save_image(order_id, index, _normalize_image(got))
+    return {"ok": True}
+
+
+@app.delete("/api/orders/{order_id}/image/{index}")
+def delete_image(order_id: int, index: int, request: Request):
+    uid = require_user(request)
+    _own_project(order_id, uid)
+    service.save_image(order_id, index, None)
+    return {"ok": True}
+
+
+class ChartIn(BaseModel):
+    type: str = Field(pattern="^(column|bar|pie|line)$")
+    title: str = Field(default="", max_length=80)
+    unit: str = Field(default="", max_length=20)
+    labels: list[str] = Field(min_length=2, max_length=8)
+    values: list[float] = Field(min_length=2, max_length=8)
+
+
+class SlideIn(BaseModel):
+    title: str = Field(max_length=200)
+    bullets: list[str] = Field(max_length=10)
+    chart: ChartIn | None = None
+
+
+class SaveIn(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    subtitle: str = Field(default="", max_length=300)
+    closing: str = Field(default="", max_length=400)
+    slides: list[SlideIn]
+    template: str = Field(pattern=r"^\d{2}$")
+    fonts: dict[str, str] = {}
+
+
+@app.post("/api/orders/{order_id}/save")
+async def save_project(order_id: int, body: SaveIn, request: Request):
+    """Tahrirlangan matn/diagramma/shrift/dizayn bilan faylni qayta yig'adi (bepul)."""
+    uid = require_user(request)
+    project = _own_project(order_id, uid)
+    old = project["content"]["slides"]
+    if len(body.slides) != len(old):
+        raise HTTPException(400, "Slaydlar soni mos emas, sahifani yangilang")
+    if not templates.get(body.template):
+        raise HTTPException(400, "Bunday dizayn yo'q")
+    fonts = {k: v for k, v in body.fonts.items() if k in ("title", "body") and v in FONTS}
+    for src, dst in zip(body.slides, old):
+        dst["title"] = src.title.strip() or dst["title"]
+        dst["bullets"] = [b.strip() for b in src.bullets if b.strip()][:8]
+        chart = None
+        if src.chart:
+            chart = ai.clean_chart(src.chart.model_dump())
+            if chart is None:
+                raise HTTPException(400, f"«{dst['title']}» slaydidagi diagramma to'liq emas: nom va raqamlarni kiriting")
+        dst["chart"] = chart
+    project["outline"].update(title=body.title.strip(), subtitle=body.subtitle.strip(),
+                              slides=[s["title"] for s in old])
+    project["content"]["closing"] = body.closing.strip()
+    project["template"] = body.template
+    project["fonts"] = fonts
+    path = await service.rebuild(order_id, project)
+    db.finish_order(order_id, "done", str(path))
+    await notify.send_file(uid, path, f"✏️ {project['outline']['title']}\n(saytda tahrirlandi)")
+    return {"ok": True, "download": f"/api/download/{order_id}", "version": project["version"]}
 
 
 # ---------------- Sahifalar ----------------

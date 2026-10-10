@@ -65,6 +65,50 @@ CONTENT_SCHEMA = {
 }
 
 
+# Diagramma yoqilganda har slaydga qo'shimcha maydonlar (Gemini "ixtiyoriy" maydonni yaxshi
+# qo'llamagani uchun hamma slaydda bor, keraksizlarida chart_type = "none")
+CHART_FIELDS = {
+    "chart_type": {"type": "string"},
+    "chart_title": {"type": "string"},
+    "chart_labels": {"type": "array", "items": {"type": "string"}},
+    "chart_values": {"type": "array", "items": {"type": "number"}},
+    "chart_unit": {"type": "string"},
+}
+
+
+def _content_schema(charts: bool) -> dict:
+    if not charts:
+        return CONTENT_SCHEMA
+    import copy
+
+    schema = copy.deepcopy(CONTENT_SCHEMA)
+    item = schema["properties"]["slides"]["items"]
+    item["properties"].update(CHART_FIELDS)
+    item["required"] += list(CHART_FIELDS)
+    return schema
+
+
+MAX_CHARTS = 3
+
+
+def clean_chart(s: dict) -> dict | None:
+    """AI bergan diagramma ma'lumotini tekshiradi; yaroqsiz bo'lsa None."""
+    kind = str(s.get("chart_type") or s.get("type") or "").lower().strip()
+    if kind not in ("column", "bar", "pie", "line"):
+        return None
+    labels = [str(x).strip()[:40] for x in (s.get("chart_labels") or s.get("labels") or [])]
+    try:
+        values = [float(v) for v in (s.get("chart_values") or s.get("values") or [])]
+    except (TypeError, ValueError):
+        return None
+    n = min(len(labels), len(values), 8)
+    if n < 2 or not all(labels[:n]):
+        return None
+    values = [int(v) if float(v).is_integer() else round(v, 2) for v in values[:n]]
+    return {"type": kind, "title": str(s.get("chart_title") or s.get("title") or "")[:80],
+            "labels": labels[:n], "values": values, "unit": str(s.get("chart_unit") or s.get("unit") or "")[:20]}
+
+
 class AIError(Exception):
     pass
 
@@ -301,9 +345,9 @@ async def make_outline(topic: str, lang: str, total_slides: int) -> dict:
     return {"title": data["title"].strip() or topic, "subtitle": data["subtitle"].strip(), "slides": slides}
 
 
-async def make_content(topic: str, lang: str, outline: dict) -> dict:
+async def make_content(topic: str, lang: str, outline: dict, charts: bool = False) -> dict:
     if config.DEMO_MODE:
-        return _demo_content(outline)
+        return _demo_content(outline, charts)
     titles = "\n".join(f"{i}. {t}" for i, t in enumerate(outline["slides"], 1))
     prompt = (
         f"Mavzu: {topic}\nTaqdimot sarlavhasi: {outline['title']}\nTil: {LANGS[lang]}\n\n"
@@ -312,12 +356,30 @@ async def make_content(topic: str, lang: str, outline: dict) -> dict:
         "2–4 so'zli INGLIZCHA ibora (masalan 'solar panels field'). closing — yakuniy slayd uchun bitta "
         f"qisqa xulosa jumla. Matn {LANGS[lang]} da bo'lsin."
     )
-    data = await _ask_json(prompt, CONTENT_SCHEMA, 16000)
+    if charts:
+        prompt += (
+            f"\n\nDIAGRAMMALAR: raqamli taqqoslash tabiiy bo'lgan 1–{MAX_CHARTS} ta slaydga diagramma qo'shing "
+            "(chart_type: column — taqqoslash, bar — reyting, pie — ulushlar (yig'indisi 100), line — yillar bo'yicha "
+            "o'zgarish). chart_labels 3–6 ta qisqa nom, chart_values shuncha raqam, chart_unit (masalan '%', 'mln', "
+            "'yil'), chart_title qisqa. Faqat umumma'lum va ishonchli taxminiy ma'lumotlardan foydalaning, aniq raqam "
+            "noma'lum bo'lsa diagramma qo'ymang. Diagrammasiz slaydlarda chart_type = \"none\", qolgan chart "
+            "maydonlari bo'sh."
+        )
+    data = await _ask_json(prompt, _content_schema(charts), 16000)
     slides = []
     for i, title in enumerate(outline["slides"]):
         s = data["slides"][i] if i < len(data["slides"]) else {"bullets": [], "image_query": ""}
         bullets = [b.strip() for b in s["bullets"] if b.strip()][:6]
-        slides.append({"title": s.get("title") or title, "bullets": bullets, "image_query": s["image_query"]})
+        chart = clean_chart(s) if charts else None
+        slides.append({"title": s.get("title") or title, "bullets": bullets, "image_query": s.get("image_query", ""),
+                       "chart": chart})
+    # Juda ko'p diagramma bo'lsa ortiqchasini olib tashlaymiz
+    seen = 0
+    for sl in slides:
+        if sl["chart"]:
+            seen += 1
+            if seen > MAX_CHARTS:
+                sl["chart"] = None
     return {"slides": slides, "closing": data["closing"].strip()}
 
 
@@ -330,13 +392,20 @@ def _demo_outline(topic: str, n: int) -> dict:
     return {"title": topic.strip().capitalize(), "subtitle": "Taqdimot", "slides": slides[:n]}
 
 
-def _demo_content(outline: dict) -> dict:
+def _demo_content(outline: dict, charts: bool = False) -> dict:
     slides = [
         {
             "title": t,
             "bullets": [f"{t} bo'yicha {k}-muhim fikr: bu yerda AI yozgan haqiqiy matn bo'ladi" for k in range(1, 5)],
             "image_query": "education",
+            "chart": None,
         }
         for t in outline["slides"]
     ]
+    if charts and len(slides) > 1:
+        slides[1]["chart"] = {"type": "column", "title": "Namuna diagramma", "unit": "%",
+                              "labels": ["2022", "2023", "2024", "2025"], "values": [18, 27, 41, 56]}
+    if charts and len(slides) > 3:
+        slides[3]["chart"] = {"type": "pie", "title": "Ulushlar", "unit": "%",
+                              "labels": ["A", "B", "C"], "values": [50, 30, 20]}
     return {"slides": slides, "closing": "DEMO rejim: ANTHROPIC_API_KEY qo'shilgach haqiqiy matn chiqadi."}
