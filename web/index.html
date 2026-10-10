@@ -8,16 +8,19 @@
 <meta property="og:title" content="YaratSlayd — g'oyangizdan tayyor taqdimotgacha" />
 <meta property="og:description" content="Tahrirlanadigan PowerPoint taqdimot 1–2 daqiqada. Reja bepul." />
 <meta property="og:image" content="/static/showcase/eco-cover.jpg" />
-<meta name="theme-color" content="#16A36A" />
+<meta name="theme-color" content="#0A0F0B" />
 <link rel="icon" type="image/png" href="/static/favicon.png" />
+<link rel="icon" type="image/svg+xml" href="/static/logo-mark.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet" />
 <style>
 /* ============ Dizayn tizimi ============ */
 :root {
-  --green: #16A36A; --green-600: #12895A; --green-700: #0E6F49; --green-50: #E8F5EE; --green-100: #D3EDDF;
-  --ink: #151916; --ink-2: #3A433C; --muted: #5E6A62; --bg: #FAFAF7; --bg-2: #F0F3EF; --line: #E5E9E4; --white: #FFFFFF;
+  --green: #19C46A; --green-600: #14AE5D; --green-700: #0B7A40; --green-50: #EAFBF1; --green-100: #C9F2DA;
+  --on-green: #04130A;
+  --ink: #0A0F0B; --ink-2: #2E3830; --muted: #5B665E; --bg: #F6F7F3; --bg-2: #ECEFE8; --line: #E1E5DD; --white: #FFFFFF;
+  --dark: #0A0F0B; --dark-2: #121A14; --dark-3: #1A241C; --dark-line: rgba(255,255,255,.09); --on-dark: #F2F5F0; --on-dark-2: #A7B3AA;
   --danger: #C2410C; --danger-bg: #FFF4ED;
   --r-lg: 20px; --r-md: 14px; --r-sm: 10px;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px; --s9: 96px;
@@ -26,6 +29,7 @@
   --shadow-lg: 0 30px 60px -24px rgba(21,25,22,.28), 0 8px 18px -8px rgba(21,25,22,.10);
   --ease: cubic-bezier(.2,.7,.2,1);
   --font-head: Manrope, Inter, system-ui, sans-serif;
+  --font-display: Unbounded, Manrope, Inter, system-ui, sans-serif;
   --font-body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
@@ -48,10 +52,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   white-space: nowrap; transition: background-color .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease), box-shadow .18s var(--ease); position: relative; }
 .btn svg { width: 18px; height: 18px; flex: none; }
 .btn-primary { background: var(--green); color: #fff; box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 6px 16px -6px rgba(22,163,106,.55); }
-.btn-primary:hover { background: var(--green-600); transform: translateY(-1px); }
+.btn-primary:hover { background: var(--green-600); }
 .btn-primary:active { background: var(--green-700); transform: translateY(0); }
 .btn-secondary { background: var(--white); color: var(--ink); border-color: var(--line); box-shadow: var(--shadow-sm); }
-.btn-secondary:hover { border-color: #CFD6CF; background: #FCFCFA; transform: translateY(-1px); }
+.btn-secondary:hover { border-color: #CFD6CF; background: #FCFCFA; }
 .btn-secondary:active { transform: translateY(0); background: var(--bg-2); }
 .btn-tertiary { background: transparent; color: var(--ink-2); padding: 0 12px; }
 .btn-tertiary:hover { background: var(--bg-2); color: var(--ink); }
@@ -449,7 +453,7 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 .modal-x { position: absolute; right: 16px; top: 16px; border-radius: 50%; }
 .modal-x:hover { background: var(--bg-2); color: var(--ink); border-color: var(--line); }
 .tg-code-btn { display: block; text-align: center; text-decoration: none; padding: 16px; border-radius: 14px; border: 1px solid #CBE6F7; background: #EAF5FC; color: #1F5F87; transition: background-color .18s, transform .18s var(--ease); }
-.tg-code-btn:hover { background: #DDEFFA; transform: translateY(-1px); }
+.tg-code-btn:hover { background: #DDEFFA; }
 .tg-code-btn span { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 16px; color: #17496A; }
 .tg-code-btn svg { width: 20px; height: 20px; color: #2AABEE; }
 .tg-code-btn small { display: block; margin-top: 4px; font-size: 13px; }
@@ -544,12 +548,170 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
   .js .reveal { opacity: 1; transform: none; }
 }
+
+/* ===================== v3: o'ziga xos brend ===================== */
+h1, h2, .h2 { font-family: var(--font-display); letter-spacing: -0.035em; }
+.h2 { font-weight: 700; font-size: clamp(26px, 3.4vw, 40px); line-height: 1.12; }
+.kicker { color: var(--green-700); }
+.btn-primary { background: var(--green); color: var(--on-green); box-shadow: 0 1px 0 rgba(255,255,255,.35) inset, 0 10px 24px -10px rgba(25,196,106,.75); }
+.btn-primary:hover { background: #2AD47A; }
+.btn-primary:active { background: var(--green-600); }
+.btn.is-loading::after { border-color: rgba(4,19,10,.25); border-top-color: var(--on-green); }
+.btn-ghost-dark { background: transparent; color: var(--on-dark); border-color: rgba(255,255,255,.22); }
+.btn-ghost-dark:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.4); }
+.brand .mark { width: 22px; height: 31px; color: var(--ink); flex: none; }
+.brand .word { font-family: var(--font-display); font-size: 19px; letter-spacing: -0.04em; }
+.brand .word b { font-weight: 800; }
+.brand .word span { font-weight: 700; color: var(--green-700); }
+.stepper .st.active .n, .ed-list button[aria-current="true"] .n { color: var(--on-green); }
+
+/* Header: hero ustida shaffof, pastga tushganda oq */
+.site-header { background: rgba(10,15,11,.86); border-bottom-color: var(--dark-line); }
+.site-header .brand .mark { color: #fff; }
+.site-header .brand .word b { color: #fff; }
+.site-header .brand .word span { color: var(--green); }
+.site-header .nav-links a { color: var(--on-dark-2); }
+.site-header .nav-links a:hover { background: rgba(255,255,255,.06); color: #fff; }
+.site-header .btn-secondary { background: transparent; color: #fff; border-color: rgba(255,255,255,.22); box-shadow: none; }
+.site-header .btn-secondary:hover { background: rgba(255,255,255,.07); }
+.site-header .burger { background: transparent; border-color: rgba(255,255,255,.22); color: #fff; }
+.site-header .balance-chip { background: rgba(25,196,106,.14); border-color: rgba(25,196,106,.35); color: #7DEBAA; }
+.site-header .avatar-btn { background: var(--dark-3); border-color: var(--dark-line); color: var(--green); }
+.site-header.scrolled { background: rgba(10,15,11,.95); border-bottom-color: var(--dark-line); }
+.mobile-panel.open { background: var(--dark) !important; }
+.mobile-panel a { color: var(--on-dark); border-bottom-color: var(--dark-line) !important; }
+
+/* HERO — qora, yashil nur va to'r */
+.hero { background: var(--dark); color: var(--on-dark); padding: var(--s8) 0 var(--s9); }
+.hero::before { display: none; }
+.hero-bg { position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(680px 360px at 78% 18%, rgba(25,196,106,.22), transparent 70%),
+    radial-gradient(520px 300px at 8% 92%, rgba(25,196,106,.10), transparent 70%),
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px) 0 0 / 56px 56px;
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 30%, #000 40%, transparent 100%); }
+.hero h1 { color: #fff; font-weight: 800; font-size: clamp(32px, 4.3vw, 56px); line-height: 1.06; letter-spacing: -0.04em; }
+.hero h1 .accent { color: var(--green); }
+.hero .sub { color: var(--on-dark-2); }
+.hero .eyebrow { background: rgba(25,196,106,.1); border-color: rgba(25,196,106,.3); color: #7DEBAA; }
+.hero .eyebrow .dot { box-shadow: 0 0 0 4px rgba(25,196,106,.2); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(25,196,106,0); } }
+.hero .composer { color: var(--ink); border: 0; box-shadow: 0 30px 80px -30px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.06); }
+.hero .msg.err { margin-top: 12px; }
+.hero-note { color: var(--on-dark-2); }
+.hero-note svg { color: var(--green); }
+
+/* Jonli namoyish oynasi */
+.demo { position: relative; background: var(--dark-2); border: 1px solid var(--dark-line); border-radius: 22px; box-shadow: 0 40px 100px -40px rgba(0,0,0,.9), 0 0 0 1px rgba(25,196,106,.08), 0 0 80px -20px rgba(25,196,106,.25); overflow: hidden; }
+.demo-top { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid var(--dark-line); color: var(--on-dark-2); font-size: 12.5px; font-weight: 600; }
+.demo-top i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.14); }
+.demo-top span { margin-left: 8px; }
+.demo-top .live { margin-left: auto; font-style: normal; font-size: 11px; color: #7DEBAA; display: inline-flex; align-items: center; gap: 6px; }
+.demo-top .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: blink 1.2s steps(1) infinite; }
+.demo-body { padding: 16px; display: grid; gap: 12px; }
+.demo-input { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--dark-3); border: 1px solid var(--dark-line); color: #fff; font-size: 15px; min-height: 48px; overflow: hidden; white-space: nowrap; }
+.demo-input .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--green); flex: none; }
+.demo-input .caret { background: var(--green); height: 18px; }
+.demo-steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.demo-steps span { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.05); color: var(--on-dark-2); border: 1px solid var(--dark-line); transition: all .3s var(--ease); }
+.demo-steps span.on { background: rgba(25,196,106,.14); border-color: rgba(25,196,106,.4); color: #7DEBAA; }
+.demo-steps span.done { background: var(--green); border-color: var(--green); color: var(--on-green); }
+.demo-main { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; background: var(--dark-3); }
+.demo-main img { width: 100%; height: 100%; object-fit: cover; transition: opacity .45s var(--ease), transform .6s var(--ease); }
+.demo-main img.swap { opacity: 0; transform: scale(1.03); }
+.demo-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; min-height: 56px; }
+.demo-thumbs img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 7px; border: 1px solid var(--dark-line); opacity: 0; transform: translateY(8px); transition: opacity .35s var(--ease), transform .35s var(--ease); }
+.demo-thumbs img.in { opacity: 1; transform: none; }
+.demo-file { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #fff; color: var(--ink); opacity: 0; transform: translateY(6px); transition: all .35s var(--ease); }
+.demo-file.in { opacity: 1; transform: none; }
+.demo-file .ico { width: 30px; height: 30px; border-radius: 7px; background: #D24726; color: #fff; display: grid; place-items: center; font: 800 12px var(--font-head); }
+.demo-file b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.demo-file .ok { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--green-700); }
+.demo-file .ok svg { width: 15px; height: 15px; }
+
+/* Raqamlar va dizaynlar lentasi */
+.ribbon { background: var(--white); border-bottom: 1px solid var(--line); padding: var(--s6) 0 var(--s7); overflow: hidden; }
+.stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--s4); margin-bottom: var(--s6); }
+.stats-row div { display: flex; flex-direction: column; gap: 2px; padding-left: var(--s4); border-left: 2px solid var(--line); }
+.stats-row div:first-child { border-left-color: var(--green); }
+.stats-row b { font-family: var(--font-display); font-size: clamp(22px, 2.6vw, 32px); font-weight: 800; letter-spacing: -0.04em; }
+.stats-row span { color: var(--muted); font-size: 14px; }
+.marquee { display: grid; gap: 12px; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.mq-row { overflow: hidden; }
+.mq-track { display: flex; gap: 12px; width: max-content; animation: mq 70s linear infinite; }
+.mq-row.rev .mq-track { animation-direction: reverse; animation-duration: 80s; }
+.marquee:hover .mq-track { animation-play-state: paused; }
+.mq-track img { height: 104px; width: auto; aspect-ratio: 974 / 270; border-radius: 10px; border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+@keyframes mq { to { transform: translateX(-50%); } }
+
+/* Qorong'i bo'lim (Qanday ishlaydi) */
+.dark-sec { background: var(--dark); color: var(--on-dark); border-color: var(--dark); }
+.dark-sec h2, .dark-sec h3 { color: #fff; }
+.dark-sec .kicker { color: var(--green); }
+.dark-sec .how-text p { color: var(--on-dark-2); }
+.dark-sec .how-num { color: var(--green); font-family: var(--font-display); font-size: 40px; line-height: 1; opacity: .9; }
+.dark-sec .how-row + .how-row { border-top-color: var(--dark-line); }
+.dark-sec .how-visual { background: var(--dark-2); border-color: var(--dark-line); }
+
+/* Imkoniyatlar: kichik ustunli diagramma */
+.mini-bars { display: flex; align-items: flex-end; gap: 10px; height: 84px; padding: 0 4px; border-bottom: 2px solid var(--line); }
+.mini-bars i { flex: 1; border-radius: 6px 6px 0 0; background: var(--green-100); }
+.mini-bars i.hi { background: var(--green); }
+.t-a { background: var(--dark); border-color: var(--dark); }
+
+/* Taqqoslash jadvali */
+.cmp { border: 1px solid var(--line); border-radius: 20px; overflow: hidden; background: var(--white); }
+.cmp-row { display: grid; grid-template-columns: 1fr 1.1fr 1.3fr; }
+.cmp-row span { padding: 16px 20px; border-top: 1px solid var(--line); font-size: 15px; }
+.cmp-row span:first-child { font-weight: 600; }
+.cmp-row span:nth-child(2) { color: var(--muted); }
+.cmp-row span:nth-child(3) { background: var(--green-50); color: var(--ink); font-weight: 600; }
+.cmp-head span { border-top: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; background: var(--bg); }
+.cmp-head span:nth-child(3) { background: var(--green); color: var(--on-green); }
+
+/* Yakuniy CTA va footer */
+.cta-final { background: var(--dark); border: 1px solid var(--dark-line); }
+.cta-final h2 { font-family: var(--font-display); }
+footer.site-footer { background: var(--dark); color: var(--on-dark-2); border-top: 0; }
+footer.site-footer .brand .mark { color: #fff; }
+footer.site-footer .brand .word b { color: #fff; }
+footer.site-footer .brand .word span { color: var(--green); }
+footer.site-footer h4 { color: #fff; }
+footer.site-footer a { color: var(--on-dark-2); }
+footer.site-footer a:hover { color: var(--green); }
+footer.site-footer .foot p { color: var(--on-dark-2); }
+footer.site-footer .foot-bottom { border-top-color: var(--dark-line); }
+
+@media (max-width: 1024px) {
+  .stats-row { grid-template-columns: repeat(3, 1fr); row-gap: var(--s4); }
+  .demo { max-width: 620px; margin: 0 auto; width: 100%; }
+}
+@media (max-width: 640px) {
+  .hero { padding: var(--s6) 0 var(--s7); }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .mq-track img { height: 72px; }
+  .cmp-row { grid-template-columns: 1fr 1fr; }
+  .cmp-row span:first-child { grid-column: 1 / -1; padding-bottom: 4px; border-top: 1px solid var(--line); }
+  .cmp-row span:nth-child(2), .cmp-row span:nth-child(3) { border-top: 0; padding-top: 6px; }
+  .cmp-head span:first-child { display: none; }
+  .dark-sec .how-num { font-size: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mq-track { animation: none; }
+}
 </style>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo-mark" viewBox="0 0 120 170" fill="none" stroke-width="13">
+    <path d="M14 10 L60 52 L106 10 V48 L60 90 L14 48 Z" stroke="var(--green)"/>
+    <path d="M14 46 L60 88 L106 46 V84 L60 126 L14 84 Z" stroke="currentColor"/>
+    <path d="M14 82 L60 124 L106 82 V120 L60 162 L14 120 Z" stroke="var(--green)"/>
+  </symbol>
   <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 11l6 6 6-6M5 20h14"/></symbol>
@@ -569,7 +731,7 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 <header class="site-header" id="siteHeader">
   <div class="container nav">
     <a class="brand" href="/" aria-label="YaratSlayd bosh sahifa">
-      <img src="/static/logo-green.png" alt="" width="34" height="30" />
+      <svg class="mark" aria-hidden="true"><use href="#logo-mark"/></svg>
       <span class="word"><b>Yarat</b><span>Slayd</span></span>
     </a>
     <nav class="nav-links" aria-label="Asosiy menyu">
@@ -608,11 +770,12 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 <main>
   <!-- ============ HERO ============ -->
   <section class="hero" id="create" aria-labelledby="heroTitle">
+    <div class="hero-bg" aria-hidden="true"></div>
     <div class="container hero-grid">
-      <div class="reveal">
-        <span class="eyebrow"><span class="dot"></span>PowerPoint · O'zbek, rus va ingliz tillarida</span>
-        <h1 id="heroTitle">G'oyangizdan<br /><span class="accent">tayyor taqdimotgacha.</span></h1>
-        <p class="sub">Mavzuni yozing, rejani ko'rib chiqing va 50 ta dizayndan birini tanlang. Tahrirlanadigan PowerPoint fayl 1–2 daqiqada tayyor bo'ladi.</p>
+      <div class="hero-copy reveal">
+        <span class="eyebrow"><span class="dot"></span>AI taqdimot studiyasi · sayt va Telegram</span>
+        <h1 id="heroTitle">Mavzu&nbsp;yozing&nbsp;—<br /><span class="accent">taqdimot tayyor.</span></h1>
+        <p class="sub">Reja, matn, rasmlar, diagramma va dizayn — hammasini YaratSlayd qiladi. Siz ko'rib, tahrirlab, PowerPoint yoki PDF'da yuklab olasiz.</p>
 
         <form class="composer" id="composer" novalidate>
           <label class="sr-only" for="topic">Taqdimot mavzusi</label>
@@ -636,39 +799,36 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
         </form>
         <div class="msg" id="planMsg" role="alert" aria-live="polite"></div>
         <div class="hero-actions">
-          <a class="btn btn-secondary" href="#templates">Namunalarni ko'rish</a>
+          <a class="btn btn-ghost-dark" href="#templates">50 ta dizaynni ko'rish</a>
           <span class="hero-note"><svg><use href="#i-check"/></svg><span id="heroNote">Reja bepul — to'lov faqat fayl tayyorlanganda</span></span>
         </div>
       </div>
 
-      <div class="stage reveal" aria-label="YaratSlayd yasagan taqdimot namunalari">
-        <div class="slide-img s-back1"><img src="/static/showcase/ai-cover.jpg" alt="Sun'iy intellekt ta'limda — muqova slaydi" width="1280" height="720" /></div>
-        <div class="slide-img s-main"><img src="/static/showcase/eco-cover.jpg" alt="Qayta ishlash va yashil iqtisodiyot — muqova slaydi" width="1280" height="720" fetchpriority="high" /></div>
-        <div class="slide-img s-back2"><img src="/static/showcase/biz-content.jpg" alt="Rasmli matn slaydi namunasi" width="1280" height="720" /></div>
-        <div class="float-card plan-mini floaty" aria-hidden="true">
-          <h4>Reja <span>tahrirlanadi</span></h4>
-          <ol>
-            <li><i>1</i>Muammoning ko'lami</li>
-            <li class="editing"><i>2</i>Qayta ishlash jarayoni<span class="caret"></span></li>
-            <li><i>3</i>O'zbekistondagi tajriba</li>
-            <li><i>4</i>Xulosa</li>
-          </ol>
-        </div>
-        <div class="float-card file-chip floaty d2" aria-hidden="true">
-          <span class="ico">P</span>
-          <span><b>Qayta_ishlash.pptx</b><small>PowerPoint · 10 slayd</small></span>
+      <div class="demo reveal" aria-label="Jonli namoyish: mavzudan tayyor taqdimotgacha">
+        <div class="demo-top"><i></i><i></i><i></i><span>YaratSlayd Studio</span><em class="live">jonli</em></div>
+        <div class="demo-body">
+          <div class="demo-input"><span class="lbl">Mavzu</span><span class="typed" id="demoTyped"></span><span class="caret"></span></div>
+          <div class="demo-steps" id="demoSteps"><span>Reja</span><span>Matn</span><span>Rasm va diagramma</span><span>Dizayn</span></div>
+          <div class="demo-main"><img id="demoMain" alt="Namuna slayd" src="/static/showcase/eco-cover.jpg" width="1280" height="720" fetchpriority="high" /></div>
+          <div class="demo-thumbs" id="demoThumbs"></div>
+          <div class="demo-file" id="demoFile"><span class="ico">P</span><b id="demoFileName">Qayta_ishlash.pptx</b><span class="ok"><svg><use href="#i-check"/></svg>Tayyor</span></div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ============ AFZALLIKLAR ============ -->
-  <section class="trust" aria-label="Afzalliklar">
-    <div class="container trust-row">
-      <div class="trust-item"><span class="ic"><svg><use href="#i-clock"/></svg></span><span><b>1–2 daqiqada tayyor</b><small>Reja bir necha soniyada</small></span></div>
-      <div class="trust-item"><span class="ic"><svg><use href="#i-layout"/></svg></span><span><b>50 ta dizayn</b><small>7 xil uslubda</small></span></div>
-      <div class="trust-item"><span class="ic"><svg><use href="#i-edit"/></svg></span><span><b>Reja — sizning qo'lingizda</b><small>Qo'shing, o'chiring, o'zgartiring</small></span></div>
-      <div class="trust-item"><span class="ic"><svg><use href="#i-file"/></svg></span><span><b>PowerPoint (.pptx) fayl</b><small>To'liq tahrirlanadi</small></span></div>
+  <!-- ============ DIZAYNLAR LENTASI ============ -->
+  <section class="ribbon" aria-label="Dizaynlar va raqamlar">
+    <div class="container stats-row">
+      <div><b>50</b><span>professional dizayn</span></div>
+      <div><b>7</b><span>uslub turkumi</span></div>
+      <div><b>3</b><span>til: uz · ru · en</span></div>
+      <div><b>1–2</b><span>daqiqada tayyor</span></div>
+      <div><b>PPTX</b><span>va PDF, tahrirlanadi</span></div>
+    </div>
+    <div class="marquee" id="marquee" aria-hidden="true">
+      <div class="mq-row"><div class="mq-track" id="mqA"></div></div>
+      <div class="mq-row rev"><div class="mq-track" id="mqB"></div></div>
     </div>
   </section>
 
@@ -812,7 +972,7 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
   </section>
 
   <!-- ============ QANDAY ISHLAYDI ============ -->
-  <section class="section how" id="how" aria-labelledby="howTitle">
+  <section class="section how dark-sec" id="how" aria-labelledby="howTitle">
     <div class="container">
       <div class="section-head center reveal">
         <div class="kicker">Qanday ishlaydi?</div>
@@ -859,8 +1019,8 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
       <div class="how-row reveal">
         <div class="how-text">
           <div class="how-num">03</div>
-          <h3>Yuklab oling va tahrirlang</h3>
-          <p>1–2 daqiqada .pptx fayl tayyor: matn, rasmlar va dizayn joyida. Fayl Telegram botingizga ham yuboriladi.</p>
+          <h3>Ko'ring, tahrirlang, yuklab oling</h3>
+          <p>Har bir slaydni haqiqiy ko'rinishda ko'rasiz: matn, rasm, diagramma va shriftni o'zgartirasiz. So'ng PowerPoint yoki PDF — fayl Telegram'ga ham keladi.</p>
         </div>
         <div class="how-visual">
           <div class="dl-mock" aria-hidden="true">
@@ -949,20 +1109,39 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
           <div class="media slide-img" style="position:relative"><img src="/static/showcase/biz-content.jpg" alt="Rasmli slayd namunasi" loading="lazy" width="1280" height="720" /></div>
         </article>
         <article class="tile t-e reveal">
-          <h3>Uch tilda</h3>
-          <p>Matn tanlangan tilda yoziladi.</p>
-          <div class="media lang-chips"><span>O'zbekcha</span><span>Ruscha</span><span>Inglizcha</span></div>
+          <h3>Diagramma va infografika</h3>
+          <p>Ulushlar, o'sish, bosqichlar va sanalar — AI o'zi chizadi.</p>
+          <div class="media mini-bars" aria-hidden="true"><i style="height:38%"></i><i style="height:55%"></i><i style="height:72%"></i><i class="hi" style="height:100%"></i></div>
         </article>
         <article class="tile t-f reveal">
-          <h3>Istalgan dasturda ochiladi</h3>
-          <p>Oddiy .pptx fayl: matn, rang va rasmlarni o'zgartirish mumkin.</p>
-          <div class="media file-row"><span>PowerPoint</span><span>WPS Office</span><span>Google Slides</span></div>
+          <h3>PPTX va PDF</h3>
+          <p>PowerPoint, WPS va Google Slides'da ochiladi, hammasi tahrirlanadi.</p>
+          <div class="media file-row"><span>PowerPoint</span><span>PDF</span><span>Google Slides</span></div>
         </article>
         <article class="tile t-g reveal">
           <h3>Telegram bot bilan bitta hisob</h3>
           <p>Balans va taqdimotlar sayt bilan bot uchun umumiy.</p>
           <div class="media tg-box"><svg><use href="#i-tg"/></svg><span>Saytda yaratgan faylingiz botga ham keladi</span></div>
         </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FARQI ============ -->
+  <section class="section" id="compare" aria-labelledby="cmpTitle" style="padding-top:0">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="kicker">Farqi</div>
+        <h2 class="h2" id="cmpTitle">AI-chat matn yozadi. YaratSlayd — topshirishga tayyor taqdimot.</h2>
+      </div>
+      <div class="cmp reveal" role="table" aria-label="Oddiy AI-chat va YaratSlayd taqqoslash">
+        <div class="cmp-row cmp-head" role="row"><span role="columnheader">Nima kerak</span><span role="columnheader">Oddiy AI-chat</span><span role="columnheader">YaratSlayd</span></div>
+        <div class="cmp-row" role="row"><span role="cell">Fayl</span><span role="cell">Matnni ko'chirib, o'zingiz joylaysiz</span><span role="cell">Tayyor PPTX va PDF</span></div>
+        <div class="cmp-row" role="row"><span role="cell">Dizayn</span><span role="cell">Yo'q</span><span role="cell">50 ta dizayn, keyin ham almashadi</span></div>
+        <div class="cmp-row" role="row"><span role="cell">Diagramma va infografika</span><span role="cell">Qo'lda chizasiz</span><span role="cell">Avtomatik, PowerPoint'da tahrirlanadi</span></div>
+        <div class="cmp-row" role="row"><span role="cell">Rasmlar</span><span role="cell">O'zingiz qidirasiz</span><span role="cell">Mavzuga mos, xohlasangiz o'zingiznikini qo'yasiz</span></div>
+        <div class="cmp-row" role="row"><span role="cell">Tahrirlash</span><span role="cell">Qayta-qayta so'rash</span><span role="cell">Slaydlarni ko'rib turib tahrirlash</span></div>
+        <div class="cmp-row" role="row"><span role="cell">Telegram</span><span role="cell">—</span><span role="cell">Bot va sayt bitta hisobda</span></div>
       </div>
     </div>
   </section>
@@ -1004,7 +1183,8 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
       </div>
       <div class="faq reveal">
         <details><summary>Ro'yxatdan o'tish kerakmi?<span class="pm"><svg><use href="#i-plus"/></svg></span></summary><p>Reja tuzish uchun kerak emas. Faylni tayyorlashda Telegram orqali bir bosishda kirasiz — alohida parol yo'q.</p></details>
-        <details><summary>Taqdimotni keyin tahrirlasa bo'ladimi?<span class="pm"><svg><use href="#i-plus"/></svg></span></summary><p>Ha. Fayl oddiy PowerPoint (.pptx) formatida: matn, rasmlar va ranglarni PowerPoint, WPS yoki Google Slides'da o'zgartirasiz.</p></details>
+        <details><summary>Taqdimotni keyin tahrirlasa bo'ladimi?<span class="pm"><svg><use href="#i-plus"/></svg></span></summary><p>Ha, ikki yo'l bilan. Saytdagi tahrirlovchida slaydlarni ko'rib turib matn, rasm, diagramma, dizayn va shriftni bepul o'zgartirasiz. Yoki PowerPoint, WPS, Google Slides'da ochib o'zingiz tahrirlaysiz.</p></details>
+        <details><summary>PDF ham bormi?<span class="pm"><svg><use href="#i-plus"/></svg></span></summary><p>Ha. Tahrirlovchida «PDF» tugmasi bilan yuklab olasiz — topshirish va chop etish uchun qulay.</p></details>
         <details><summary>Xatolik chiqsa pulim nima bo'ladi?<span class="pm"><svg><use href="#i-plus"/></svg></span></summary><p>Taqdimot tayyorlanmasa, yechilgan summa darhol balansingizga qaytariladi va qayta urinib ko'rishingiz mumkin.</p></details>
         <details><summary>Qaysi tillarda ishlaydi?<span class="pm"><svg><use href="#i-plus"/></svg></span></summary><p>Taqdimot matni o'zbek (lotin), rus yoki ingliz tilida yoziladi — mavzuni kiritishda tanlaysiz.</p></details>
         <details><summary>Sayt va Telegram bot farqi nima?<span class="pm"><svg><use href="#i-plus"/></svg></span></summary><p>Ikkalasi bitta tizim: balans va taqdimotlar umumiy. Saytda rejani tahrirlash va dizaynlarni katta ko'rinishda tanlash qulayroq, bot esa telefonda tez ishlatish uchun.</p></details>
@@ -1028,7 +1208,7 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
   <div class="container">
     <div class="foot">
       <div>
-        <a class="brand" href="/" aria-label="YaratSlayd"><img src="/static/logo-green.png" alt="" width="34" height="30" /><span class="word"><b>Yarat</b><span>Slayd</span></span></a>
+        <a class="brand" href="/" aria-label="YaratSlayd"><svg class="mark" aria-hidden="true"><use href="#logo-mark"/></svg><span class="word"><b>Yarat</b><span>Slayd</span></span></a>
         <p>Mavzudan tahrirlanadigan PowerPoint taqdimot tayyorlaydigan platforma — saytda va Telegram botda.</p>
       </div>
       <div>
@@ -1733,6 +1913,80 @@ function setBA(showSlides) {
   $("viewPlain").classList.toggle("off", showSlides);
 }
 
+// ---------- Bosh sahifa: dizaynlar lentasi va jonli namoyish ----------
+function renderMarquee() {
+  const list = (state.cfg.templates || []).map((t) => t.id);
+  if (!list.length) return;
+  const half = Math.ceil(list.length / 2);
+  const fill = (el, ids) => {
+    const html = ids.map((id) => `<img src="/previews/${id}.jpg" alt="" loading="lazy" width="974" height="270" />`).join("");
+    el.innerHTML = html + html; // ikki marta — uzluksiz aylanish uchun
+  };
+  fill($("mqA"), list.slice(0, half));
+  fill($("mqB"), list.slice(half));
+}
+
+const DEMOS = [
+  { topic: "Chiqindilarni qayta ishlash", file: "Qayta_ishlash.pptx", main: "eco-cover", thumbs: ["eco-agenda", "eco-text", "eco-cover"] },
+  { topic: "Sun'iy intellekt ta'limda", file: "Suniy_intellekt.pptx", main: "ai-cover", thumbs: ["ai-content", "ai-cover", "ai-content"] },
+  { topic: "Kichik biznes strategiyasi", file: "Biznes_strategiya.pptx", main: "biz-cover", thumbs: ["biz-content", "biz-cover", "biz-content"] },
+];
+const shot = (n) => `/static/showcase/${n}.jpg`;
+
+function runDemo() {
+  const typed = $("demoTyped"), steps = [...$("demoSteps").children], main = $("demoMain"),
+        thumbs = $("demoThumbs"), file = $("demoFile");
+  if (!typed) return;
+  const show = (d) => {
+    typed.textContent = d.topic;
+    steps.forEach((s) => { s.className = "done"; });
+    main.src = shot(d.main);
+    thumbs.innerHTML = d.thumbs.map((t) => `<img class="in" src="${shot(t)}" alt="" />`).join("");
+    $("demoFileName").textContent = d.file;
+    file.classList.add("in");
+  };
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { show(DEMOS[0]); return; }
+  DEMOS.forEach((d) => [d.main, ...d.thumbs].forEach((n) => { const i = new Image(); i.src = shot(n); }));
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  let k = 0;
+  (async function loop() {
+    for (;;) {
+      const d = DEMOS[k++ % DEMOS.length];
+      // Tozalash
+      file.classList.remove("in");
+      thumbs.innerHTML = "";
+      steps.forEach((s) => { s.className = ""; });
+      typed.textContent = "";
+      for (const ch of d.topic) { typed.textContent += ch; await wait(55); }
+      await wait(350);
+      for (let i = 0; i < steps.length; i++) {
+        steps[i].className = "on";
+        if (i === 2) {
+          main.classList.add("swap");
+          await wait(300);
+          main.src = shot(d.main);
+          main.classList.remove("swap");
+        }
+        if (i === 3) {
+          for (const t of d.thumbs) {
+            const im = document.createElement("img");
+            im.src = shot(t); im.alt = "";
+            thumbs.append(im);
+            await wait(40);
+            im.classList.add("in");
+            await wait(220);
+          }
+        }
+        await wait(650);
+        steps[i].className = "done";
+      }
+      $("demoFileName").textContent = d.file;
+      file.classList.add("in");
+      await wait(3200);
+    }
+  })();
+}
+
 // ---------- Ishga tushirish ----------
 async function init() {
   state.cfg = await api("/api/config");
@@ -1765,6 +2019,7 @@ async function init() {
   if (tpl && state.cfg.templates.some((t) => t.id === tpl)) state.template = tpl;
   renderGallery();
   renderPick();
+  renderMarquee();
   if (req && outline && Array.isArray(outline.slides)) {
     state.planReq = req; state.outline = outline;
     $("topic").value = req.topic; $("lang").value = req.lang; $("slides").value = req.slides;
@@ -1794,12 +2049,14 @@ async function init() {
   }
 }
 
+runDemo();
+
 // ---------- Telegram Mini App ----------
 if (TG) {
   document.documentElement.classList.add("in-tg");
   TG.ready();
   TG.expand();
-  try { TG.setHeaderColor("#FAFAF7"); TG.setBackgroundColor("#FAFAF7"); } catch (_) {}
+  try { TG.setHeaderColor("#0A0F0B"); TG.setBackgroundColor("#F6F7F3"); } catch (_) {}
   // Fayl yuklash va Telegram havolalari Telegram'ning o'z oynalari orqali ochiladi
   document.addEventListener("click", (e) => {
     const a = e.target.closest("a[href]");
