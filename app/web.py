@@ -35,6 +35,23 @@ MAX_UPLOAD = 8 * 1024 * 1024
 FONTS = ["", "Calibri", "Arial", "Segoe UI", "Verdana", "Tahoma", "Trebuchet MS", "Century Gothic",
          "Georgia", "Cambria", "Times New Roman", "Bahnschrift", "Candara", "Corbel"]
 
+# Shriftni nomi bilan emas, ko'rinishi bilan tanlash: har uslub uchun Windows/Mac'da bor shriftlar
+# ("web" — saytdagi namunani ko'rsatish uchun Google Fonts'dagi o'xshash shrift)
+FONT_PRESETS = [
+    {"id": "", "name": "Shablon uslubi", "title": "", "body": "", "web": "inherit"},
+    {"id": "modern", "name": "Zamonaviy", "title": "Segoe UI Semibold", "body": "Segoe UI", "web": "'Segoe UI', 'Noto Sans', sans-serif"},
+    {"id": "clean", "name": "Toza", "title": "Calibri", "body": "Calibri", "web": "Calibri, Carlito, sans-serif"},
+    {"id": "classic", "name": "Klassik", "title": "Georgia", "body": "Calibri", "web": "Georgia, Gelasio, serif"},
+    {"id": "academic", "name": "Akademik", "title": "Times New Roman", "body": "Times New Roman", "web": "'Times New Roman', Tinos, serif"},
+    {"id": "elegant", "name": "Nafis", "title": "Cambria", "body": "Calibri", "web": "Cambria, Caladea, serif"},
+    {"id": "strong", "name": "Qat'iy", "title": "Arial Black", "body": "Arial", "web": "'Arial Black', 'Archivo Black', sans-serif"},
+    {"id": "geometric", "name": "Geometrik", "title": "Century Gothic", "body": "Century Gothic", "web": "'Century Gothic', Questrial, sans-serif"},
+    {"id": "tech", "name": "Texnik", "title": "Bahnschrift", "body": "Segoe UI", "web": "Bahnschrift, 'Barlow Semi Condensed', sans-serif"},
+    {"id": "friendly", "name": "Do'stona", "title": "Trebuchet MS", "body": "Trebuchet MS", "web": "'Trebuchet MS', 'Fira Sans', sans-serif"},
+]
+FONT_PRESETS_BY_ID = {p["id"]: p for p in FONT_PRESETS}
+FONTS = sorted({p[k] for p in FONT_PRESETS for k in ("title", "body")} | set(FONTS))
+
 # Ro'yxatdan o'tmaganlar uchun reja limiti (bepul AI limitini himoya qiladi)
 _plan_hits: dict[str, deque] = defaultdict(deque)
 PLAN_LIMIT_PER_HOUR = 15
@@ -233,6 +250,10 @@ async def generate(body: GenerateIn, request: Request):
         try:
             path = await service.generate(order_id, body.topic.strip(), body.lang, outline, body.template, progress,
                                           charts=body.charts)
+            await progress("👀 Slaydlar ko'rinishi tayyorlanmoqda...")
+            project = service.load_project(order_id)
+            if project:
+                await service.ensure_preview(order_id, project, path)
             db.finish_order(order_id, "done", str(path))
             jobs[job_id].update(status="done", step="Tayyor!", title=outline["title"])
             # Sayt va bot bitta: fayl Telegram'ga ham yuboriladi
@@ -298,11 +319,44 @@ def _own_project(order_id: int, uid: int) -> dict:
 
 
 @app.get("/api/orders/{order_id}/project")
-def get_project(order_id: int, request: Request):
+async def get_project(order_id: int, request: Request):
     uid = require_user(request)
     project = _own_project(order_id, uid)
     imgs = service.load_images(order_id, len(project["content"]["slides"]))
-    return {**project, "images": [img is not None for img in imgs], "fonts_list": FONTS}
+    previews = await service.ensure_preview(order_id, project)
+    return {**project, "images": [img is not None for img in imgs], "fonts_list": FONTS,
+            "font_presets": FONT_PRESETS, "previews": previews}
+
+
+@app.get("/api/orders/{order_id}/preview/{n}")
+def get_preview(order_id: int, n: int, request: Request):
+    uid = require_user(request)
+    project = _own_project(order_id, uid)
+    path = service.preview_dir(order_id, int(project.get("version", 1))) / f"{n}.jpg"
+    if not path.exists():
+        raise HTTPException(404, "Ko'rinish yo'q")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@app.get("/api/orders/{order_id}/pdf")
+def get_pdf(order_id: int, request: Request):
+    uid = require_user(request)
+    project = _own_project(order_id, uid)
+    path = service.preview_dir(order_id, int(project.get("version", 1))) / "deck.pdf"
+    if not path.exists():
+        raise HTTPException(404, "PDF hali tayyor emas")
+    return FileResponse(path, filename=f"{service.safe_filename(project['outline']['title'])}.pdf")
+
+
+@app.post("/api/orders/{order_id}/send")
+async def send_to_telegram(order_id: int, request: Request):
+    uid = require_user(request)
+    project = _own_project(order_id, uid)
+    order = db.get_order(order_id)
+    if not notify.bot:
+        raise HTTPException(503, "Telegram bot ulanmagan")
+    await notify.send_file(uid, Path(order["file_path"]), f"✅ {project['outline']['title']}")
+    return {"ok": True}
 
 
 @app.get("/api/orders/{order_id}/image/{index}")
@@ -375,10 +429,18 @@ class ChartIn(BaseModel):
     values: list[float] = Field(min_length=2, max_length=8)
 
 
+class ItemIn(BaseModel):
+    label: str = Field(default="", max_length=60)
+    value: str = Field(default="", max_length=24)
+    text: str = Field(default="", max_length=160)
+
+
 class SlideIn(BaseModel):
     title: str = Field(max_length=200)
     bullets: list[str] = Field(max_length=10)
     chart: ChartIn | None = None
+    layout: str | None = Field(default=None, pattern="^(stats|steps|timeline)$")
+    items: list[ItemIn] = Field(default=[], max_length=5)
 
 
 class SaveIn(BaseModel):
@@ -388,6 +450,7 @@ class SaveIn(BaseModel):
     slides: list[SlideIn]
     template: str = Field(pattern=r"^\d{2}$")
     fonts: dict[str, str] = {}
+    font_preset: str = ""
 
 
 @app.post("/api/orders/{order_id}/save")
@@ -401,6 +464,9 @@ async def save_project(order_id: int, body: SaveIn, request: Request):
     if not templates.get(body.template):
         raise HTTPException(400, "Bunday dizayn yo'q")
     fonts = {k: v for k, v in body.fonts.items() if k in ("title", "body") and v in FONTS}
+    if body.font_preset in FONT_PRESETS_BY_ID:
+        fonts = {k: v for k, v in FONT_PRESETS_BY_ID[body.font_preset].items() if k in ("title", "body")}
+        fonts["preset"] = body.font_preset
     for src, dst in zip(body.slides, old):
         dst["title"] = src.title.strip() or dst["title"]
         dst["bullets"] = [b.strip() for b in src.bullets if b.strip()][:8]
@@ -410,6 +476,12 @@ async def save_project(order_id: int, body: SaveIn, request: Request):
             if chart is None:
                 raise HTTPException(400, f"«{dst['title']}» slaydidagi diagramma to'liq emas: nom va raqamlarni kiriting")
         dst["chart"] = chart
+        layout, items = (None, None)
+        if src.layout and not chart:
+            layout, items = ai.clean_layout({"layout": src.layout, "items": [i.model_dump() for i in src.items]})
+            if layout is None:
+                raise HTTPException(400, f"«{dst['title']}» slaydidagi infografikada kamida 2 ta to'liq qator bo'lsin")
+        dst["layout"], dst["items"] = layout, items
     project["outline"].update(title=body.title.strip(), subtitle=body.subtitle.strip(),
                               slides=[s["title"] for s in old])
     project["content"]["closing"] = body.closing.strip()
@@ -417,8 +489,8 @@ async def save_project(order_id: int, body: SaveIn, request: Request):
     project["fonts"] = fonts
     path = await service.rebuild(order_id, project)
     db.finish_order(order_id, "done", str(path))
-    await notify.send_file(uid, path, f"✏️ {project['outline']['title']}\n(saytda tahrirlandi)")
-    return {"ok": True, "download": f"/api/download/{order_id}", "version": project["version"]}
+    previews = await service.ensure_preview(order_id, project, path)
+    return {"ok": True, "download": f"/api/download/{order_id}", "version": project["version"], "previews": previews}
 
 
 # ---------------- Sahifalar ----------------

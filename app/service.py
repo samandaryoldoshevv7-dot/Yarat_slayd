@@ -10,7 +10,7 @@ import os
 import re
 from pathlib import Path
 
-from . import ai, config, images, pptx_builder, templates
+from . import ai, config, images, pptx_builder, preview, templates
 
 # Bir vaqtda nechta taqdimot yig'ilishi (server va AI limitlarini himoya qiladi)
 _slots = asyncio.Semaphore(int(os.getenv("MAX_PARALLEL", "3")))
@@ -73,6 +73,37 @@ def build_project(order_id: int, project: dict) -> Path:
     return out
 
 
+def preview_dir(order_id: int, version: int) -> Path:
+    return project_dir(order_id) / "preview" / f"v{version}"
+
+
+def preview_count(order_id: int, project: dict) -> int:
+    d = preview_dir(order_id, int(project.get("version", 1)))
+    return len(list(d.glob("[0-9]*.jpg"))) if d.exists() else 0
+
+
+async def ensure_preview(order_id: int, project: dict, pptx: Path | None = None) -> int:
+    """Joriy versiya slaydlarining rasmlari (bor bo'lsa qayta yasamaydi). Slaydlar sonini qaytaradi."""
+    version = int(project.get("version", 1))
+    n = preview_count(order_id, project)
+    if n or not preview.available():
+        return n
+    if pptx is None:
+        name = safe_filename(project["outline"]["title"])
+        pptx = project_dir(order_id) / (f"{name}.pptx" if version == 1 else f"{name}_v{version}.pptx")
+        if not pptx.exists():
+            return 0
+    files = await preview.render(pptx, preview_dir(order_id, version))
+    # Eski versiyalarning rasmlari kerak emas
+    root = project_dir(order_id) / "preview"
+    for d in root.glob("v*"):
+        if d.name != f"v{version}":
+            for f in d.iterdir():
+                f.unlink(missing_ok=True)
+            d.rmdir()
+    return len(files)
+
+
 async def rebuild(order_id: int, project: dict) -> Path:
     """Tahrirlangan loyihani saqlab, faylni qayta yig'adi."""
     project["version"] = int(project.get("version", 1)) + 1
@@ -94,7 +125,7 @@ async def generate(order_id: int, topic: str, lang: str, outline: dict, template
         content = await ai.make_content(topic, lang, outline, charts)
         await step("🖼 Rasmlar tanlanmoqda...")
         # Rasm har ikkinchi slaydga (diagrammasi borlariga emas), ko'pi bilan MAX_IMAGES ta
-        with_pic = [i for i, s in enumerate(content["slides"]) if i % 2 == 0 and not s.get("chart")][:MAX_IMAGES]
+        with_pic = [i for i, s in enumerate(content["slides"]) if i % 2 == 0 and not s.get("chart") and not s.get("layout")][:MAX_IMAGES]
         fetched = await images.fetch_images([content["slides"][i]["image_query"] for i in with_pic])
         for i, img in zip(with_pic, fetched):
             save_image(order_id, i, img)

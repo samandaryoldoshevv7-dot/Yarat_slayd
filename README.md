@@ -19,6 +19,9 @@ Foydalanuvchi ──► Sayt ─────────┘         │         
 
 ## Railway'ga joylash (qadamma-qadam)
 
+> Railway loyihadagi `Dockerfile` bo'yicha yig'adi: Python + LibreOffice (slaydlar ko'rinishi va PDF uchun).
+> Birinchi yig'ish 5–10 daqiqa davom etishi mumkin.
+
 1. **Gemini kaliti (bepul):** https://aistudio.google.com/apikey → Google akkaunt bilan kiring → **Create API key** → nusxalang.
 2. **Bot tokeni:** Telegram'da @BotFather → `/newbot` → tokenni nusxalang.
 3. **Admin ID:** @userinfobot ga yozing, u sizning raqamingizni beradi.
@@ -111,6 +114,8 @@ python main.py            # bot + sayt (http://localhost:8000)
 | Saytga Telegram kodi bilan kirish (botda `/kod` yoki saytdagi tugma) | ✅ |
 | Diagrammalar: botda «Ha/Yo'q», saytda «Diagramma» tugmasi (haqiqiy PowerPoint diagrammasi) | ✅ |
 | Tayyor taqdimotni saytda tahrirlash: matn, rasm (yuklash yoki AI), diagramma, dizayn, shrift | ✅ |
+| Tahrirlovchida slaydlarning haqiqiy ko'rinishi va PDF yuklab olish (LibreOffice, `Dockerfile`) | ✅ |
+| Infografika: katta raqamlar, bosqichlar, vaqt chizig'i; premium uslubdagi diagrammalar | ✅ |
 | Click orqali avtomatik to'lov (kalitlar qo'yilgach yoqiladi) | ✅ |
 | Payme | ⏳ [GOYALAR.md](GOYALAR.md) |
 

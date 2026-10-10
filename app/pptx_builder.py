@@ -10,9 +10,10 @@ from pathlib import Path
 
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION
+from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION, XL_MARKER_STYLE
+from pptx.enum.dml import MSO_THEME_COLOR
 from pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE, PP_PLACEHOLDER
-from pptx.enum.text import MSO_AUTO_SIZE
+from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.dml.color import RGBColor
 from pptx.util import Emu, Pt
 
@@ -214,6 +215,8 @@ def _add_picture(slide, area, image: bytes) -> None:
 
 
 CHART_INK = RGBColor(0x1F, 0x29, 0x33)
+CHART_MUTED = RGBColor(0x5B, 0x66, 0x70)
+CHART_GRID = RGBColor(0xE3, 0xE7, 0xEB)
 
 
 def _set_alpha(shape, percent: int) -> None:
@@ -233,68 +236,283 @@ CHART_TYPES = {
 }
 
 
-def _add_chart(slide, area, chart: dict, font: str | None = None) -> None:
-    """Haqiqiy PowerPoint diagrammasi (rasm emas — ichidagi raqamlarni tahrirlash mumkin).
+def _card(slide, left, top, width, height, alpha: int = 95, radius: float = 0.06):
+    """Oq yarim shaffof kartochka — infografika va diagramma har qanday fonda o'qiladi."""
+    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
+    card.adjustments[0] = radius
+    card.fill.solid()
+    card.fill.fore_color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    _set_alpha(card, alpha)
+    card.line.fill.background()
+    card.shadow.inherit = False
+    return card
 
-    Ranglar shablon mavzusidan (accent) olinadi, shuning uchun har shablonga mos tushadi.
+
+def _box(slide, left, top, width, height, text, size, bold=False, color=None, theme=None,
+         align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP, font=None):
+    """Oddiy matn qutisi (avtomatik kichrayadi)."""
+    tb = slide.shapes.add_textbox(left, top, width, height)
+    tf = tb.text_frame
+    tf.word_wrap = True
+    tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+    tf.vertical_anchor = anchor
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+    p = tf.paragraphs[0]
+    p.alignment = align
+    r = p.add_run()
+    r.text = text
+    r.font.size = Pt(size)
+    r.font.bold = bold
+    if font:
+        r.font.name = font
+    if theme is not None:
+        r.font.color.theme_color = theme
+    else:
+        r.font.color.rgb = color or CHART_INK
+    return tb
+
+
+def _num_format(unit: str) -> str:
+    unit = (unit or "").replace('"', "").strip()
+    if not unit:
+        return "General"
+    return f'General"{unit}"' if unit in ("%", "‰") else f'General" {unit}"'
+
+
+def _fmt_value(v, unit: str) -> str:
+    v = int(v) if float(v).is_integer() else v
+    text = f"{v:,}".replace(",", " ") if isinstance(v, int) else str(v)
+    unit = (unit or "").strip()
+    return f"{text}{unit}" if unit in ("%", "‰") else f"{text} {unit}".strip()
+
+
+def _add_chart(slide, area, chart: dict, font: str | None = None) -> None:
+    """Premium uslubdagi haqiqiy PowerPoint diagrammasi (raqamlarini PowerPoint'da tahrirlash mumkin).
+
+    Ranglar shablon mavzusidan olinadi (accent), eng katta qiymat urg'u rangida ajratiladi,
+    tepada asosiy raqam (insight) chiqadi — premium-engine'dagi chart_hero g'oyasi.
     """
     area_left, top, area_w, height = area
     kind = chart.get("type", "column")
-    # Oq kartochka: diagramma har qanday fonda (qorong'i, rasmli) aniq o'qiladi
-    card_h = min(height, int(area_w * 0.82))
-    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, area_left, top, area_w, card_h)
-    card.adjustments[0] = 0.06
-    card.fill.solid()
-    card.fill.fore_color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-    _set_alpha(card, 94)
-    card.line.fill.background()
-    card.shadow.inherit = False
-    pad = Emu(Pt(12))
-    area_left, top, area_w, height = area_left + pad, top + pad, area_w - 2 * pad, card_h - 2 * pad
+    unit = chart.get("unit", "")
+    values = list(chart["values"])
+    card_h = min(height, int(area_w * 0.86))
+    _card(slide, area_left, top, area_w, card_h)
+    pad = Emu(Pt(16))
+    x, y, w = area_left + pad, top + pad, area_w - 2 * pad
+
+    # Sarlavha va asosiy raqam
+    head_h = Emu(Pt(40))
+    peak = max(range(len(values)), key=lambda i: values[i])
+    title = chart.get("title") or ""
+    if kind != "pie":
+        _box(slide, x, y, int(w * 0.62), head_h, title, 13, bold=True, font=font, anchor=MSO_ANCHOR.MIDDLE)
+        _box(slide, x + int(w * 0.62), y, int(w * 0.38), head_h, _fmt_value(values[peak], unit), 24, bold=True,
+             theme=MSO_THEME_COLOR.ACCENT_1, align=PP_ALIGN.RIGHT, font=font, anchor=MSO_ANCHOR.MIDDLE)
+        _box(slide, x + int(w * 0.62), y + head_h, int(w * 0.38), Emu(Pt(14)), chart["labels"][peak], 10,
+             color=CHART_MUTED, align=PP_ALIGN.RIGHT, font=font)
+    else:
+        _box(slide, x, y, w, head_h, title, 13, bold=True, font=font, anchor=MSO_ANCHOR.MIDDLE)
+    cy = y + head_h + Emu(Pt(14))
+    ch_h = top + card_h - pad - cy
+
     data = CategoryChartData()
     data.categories = chart["labels"]
-    data.add_series(chart.get("unit") or chart.get("title") or "", chart["values"])
-    w, h = area_w, height
-    gf = slide.shapes.add_chart(CHART_TYPES.get(kind, CHART_TYPES["column"]), area_left, top, w, h, data)
+    data.add_series(unit or title or "", values, number_format=_num_format(unit))
+    gf = slide.shapes.add_chart(CHART_TYPES.get(kind, CHART_TYPES["column"]), x, cy, w, ch_h, data)
     ch = gf.chart
-    ch.font.size = Pt(12)
-    ch.font.color.rgb = CHART_INK
+    ch.has_title = False
+    ch.font.size = Pt(11)
+    ch.font.color.rgb = CHART_MUTED
     if font:
         ch.font.name = font
-    title = chart.get("title")
-    ch.has_title = bool(title)
-    if title:
-        ch.chart_title.text_frame.text = title
-        for p in ch.chart_title.text_frame.paragraphs:
-            for r in p.runs:
-                r.font.size = Pt(14)
-                r.font.bold = True
     plot = ch.plots[0]
     plot.has_data_labels = True
-    labels = plot.data_labels
-    labels.font.size = Pt(11)
-    labels.font.bold = True
+    dl = plot.data_labels
+    dl.font.size = Pt(11)
+    dl.font.bold = True
+    dl.font.color.rgb = CHART_INK
+    dl.number_format = _num_format(unit)
+    dl.number_format_is_linked = False
+    series = plot.series[0]
+
     if kind == "pie":
-        ch.has_legend = True
-        ch.legend.position = XL_LEGEND_POSITION.BOTTOM
-        ch.legend.include_in_layout = False
-        labels.show_percentage = False
         plot.vary_by_categories = True
-    else:
-        ch.has_legend = False
-        plot.vary_by_categories = False
-        if kind in ("column", "bar"):
-            plot.gap_width = 60
-            try:
-                labels.position = XL_LABEL_POSITION.OUTSIDE_END
-            except Exception:
-                pass
+        accents = [MSO_THEME_COLOR.ACCENT_1, MSO_THEME_COLOR.ACCENT_2, MSO_THEME_COLOR.ACCENT_3,
+                   MSO_THEME_COLOR.ACCENT_4, MSO_THEME_COLOR.ACCENT_5, MSO_THEME_COLOR.ACCENT_6]
+        for i, pt in enumerate(series.points):
+            pt.format.fill.solid()
+            pt.format.fill.fore_color.theme_color = accents[i % len(accents)]
+            pt.format.line.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            pt.format.line.width = Pt(1.5)
+        _set_hole(plot, 58)
+        ch.has_legend = True
+        ch.legend.position = XL_LEGEND_POSITION.RIGHT
+        ch.legend.include_in_layout = False
+        ch.legend.font.size = Pt(11)
+        ch.legend.font.color.rgb = CHART_INK
+        return
+
+    ch.has_legend = False
+    plot.vary_by_categories = False
+    if kind in ("column", "bar"):
+        plot.gap_width = 45
+        plot.overlap = 0
         try:
-            ch.value_axis.has_major_gridlines = kind == "line"
-            ch.value_axis.visible = kind == "line"
-            ch.category_axis.tick_labels.font.size = Pt(11)
+            dl.position = XL_LABEL_POSITION.OUTSIDE_END
         except Exception:
             pass
+        # Eng katta qiymat — to'q urg'u, qolganlari och tusda
+        for i, pt in enumerate(series.points):
+            pt.format.fill.solid()
+            pt.format.fill.fore_color.theme_color = MSO_THEME_COLOR.ACCENT_1
+            if i != peak:
+                pt.format.fill.fore_color.brightness = 0.55
+            pt.format.line.fill.background()
+    else:  # line
+        series.format.line.color.theme_color = MSO_THEME_COLOR.ACCENT_1
+        series.format.line.width = Pt(3)
+        series.smooth = False
+        series.marker.style = XL_MARKER_STYLE.CIRCLE
+        series.marker.size = 9
+        series.marker.format.fill.solid()
+        series.marker.format.fill.fore_color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+        series.marker.format.line.color.theme_color = MSO_THEME_COLOR.ACCENT_1
+        series.marker.format.line.width = Pt(2.25)
+        try:
+            dl.position = XL_LABEL_POSITION.ABOVE
+        except Exception:
+            pass
+    try:
+        va, ca = ch.value_axis, ch.category_axis
+        va.visible = False
+        va.has_major_gridlines = kind == "line"
+        if kind == "line":
+            va.major_gridlines.format.line.color.rgb = CHART_GRID
+        va.has_minor_gridlines = False
+        ca.format.line.color.rgb = CHART_GRID
+        ca.tick_labels.font.size = Pt(11)
+        ca.tick_labels.font.color.rgb = CHART_MUTED
+        from pptx.enum.chart import XL_TICK_MARK
+        ca.major_tick_mark = XL_TICK_MARK.NONE
+    except Exception:
+        pass
+
+
+def _set_hole(plot, percent: int) -> None:
+    from pptx.oxml.ns import qn
+
+    dn = plot._element
+    hole = dn.find(qn("c:holeSize"))
+    if hole is None:
+        hole = dn.makeelement(qn("c:holeSize"), {})
+        dn.append(hole)
+    hole.set("val", str(percent))
+
+
+# ---------------- Infografika ----------------
+
+def _add_stats(slide, area, items: list, font: str | None = None) -> None:
+    """Katta raqamlar (premium-engine: stat_dominant / stat_row): o'ng tomonda 2–4 ta kartochka."""
+    area_left, top, area_w, height = area
+    items = items[:4]
+    n = len(items)
+    cols = 2 if n == 4 else 1
+    rows = (n + cols - 1) // cols
+    gap = Emu(Pt(10))
+    cw = (area_w - gap * (cols - 1)) // cols
+    chh = min((height - gap * (rows - 1)) // rows, Emu(Pt(118)))
+    for i, it in enumerate(items):
+        r, c = divmod(i, cols)
+        x = area_left + c * (cw + gap)
+        y = top + r * (chh + gap)
+        _card(slide, x, y, cw, chh, alpha=95, radius=0.08)
+        bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x, y + Emu(Pt(14)), Emu(Pt(4)), chh - Emu(Pt(28)))
+        bar.fill.solid()
+        bar.fill.fore_color.theme_color = MSO_THEME_COLOR.ACCENT_1
+        bar.line.fill.background()
+        bar.shadow.inherit = False
+        px = x + Emu(Pt(18))
+        pw = cw - Emu(Pt(30))
+        _box(slide, px, y + Emu(Pt(12)), pw, int(chh * 0.5), str(it.get("value", "")), 30 if cols == 1 else 24,
+             bold=True, theme=MSO_THEME_COLOR.ACCENT_1, font=font, anchor=MSO_ANCHOR.BOTTOM)
+        _box(slide, px, y + Emu(Pt(14)) + int(chh * 0.5), pw, int(chh * 0.5) - Emu(Pt(24)),
+             str(it.get("label", "")), 12, font=font)
+
+
+def _add_flow(slide, box, items: list, kind: str, font: str | None = None, bullets: list | None = None) -> None:
+    """Bosqichlar (process_stair) yoki vaqt chizig'i (timeline_h) — matn maydoni o'rnida, kartochkada."""
+    left, top, width, height = box
+    items = items[:5]
+    n = len(items)
+    _card(slide, left, top, width, height, alpha=95, radius=0.04)
+    pad = Emu(Pt(18))
+    x0, w = left + pad, width - 2 * pad
+    col = w // n
+    line_y = top + int(height * (0.48 if kind == "timeline" else 0.26))
+    # Gorizontal chiziq
+    ln = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x0 + col // 2, line_y - Emu(Pt(1)), col * (n - 1), Emu(Pt(2)))
+    ln.fill.solid()
+    ln.fill.fore_color.theme_color = MSO_THEME_COLOR.ACCENT_1
+    ln.fill.fore_color.brightness = 0.5
+    ln.line.fill.background()
+    ln.shadow.inherit = False
+    d = Emu(Pt(40 if kind == "steps" else 18))
+    for i, it in enumerate(items):
+        cx = x0 + col * i + col // 2
+        dot = slide.shapes.add_shape(MSO_SHAPE.OVAL, cx - d // 2, line_y - d // 2, d, d)
+        dot.fill.solid()
+        dot.fill.fore_color.theme_color = MSO_THEME_COLOR.ACCENT_1
+        if i and kind == "timeline":
+            dot.fill.fore_color.brightness = 0.25
+        dot.line.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+        dot.line.width = Pt(2.5)
+        dot.shadow.inherit = False
+        if kind == "steps":
+            tf = dot.text_frame
+            tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+            p = tf.paragraphs[0]
+            p.alignment = PP_ALIGN.CENTER
+            r = p.add_run()
+            r.text = str(i + 1)
+            r.font.size = Pt(16)
+            r.font.bold = True
+            r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+        tx = x0 + col * i + Emu(Pt(6))
+        tw = col - Emu(Pt(12))
+        label, text = str(it.get("label", "")), str(it.get("text", ""))
+        if kind == "timeline" and i % 2 == 0:  # yuqori-pastki navbat bilan, o'qish oson
+            _box(slide, tx, top + pad, tw, line_y - top - pad - Emu(Pt(18)) - Emu(Pt(40)), text, 13,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.BOTTOM, font=font)
+            _box(slide, tx, line_y - Emu(Pt(14)) - Emu(Pt(28)), tw, Emu(Pt(28)), label, 20, bold=True,
+                 theme=MSO_THEME_COLOR.ACCENT_1, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.BOTTOM, font=font)
+        else:
+            ly = line_y + d // 2 + Emu(Pt(10))
+            _box(slide, tx, ly, tw, Emu(Pt(28)), label, 17 if kind == "steps" else 20, bold=True,
+                 theme=MSO_THEME_COLOR.ACCENT_1 if kind == "timeline" else None, align=PP_ALIGN.CENTER, font=font)
+            bottom = top + int(height * 0.66) if (bullets and kind == "steps") else top + height - pad
+            _box(slide, tx, ly + Emu(Pt(34)), tw, bottom - ly - Emu(Pt(34)), text, 13,
+                 align=PP_ALIGN.CENTER, font=font)
+    if bullets and kind == "steps":
+        # Bosqichlar ostida 2–3 qisqa xulosa punkti
+        sep = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, x0, top + int(height * 0.69), w, Emu(Pt(1)))
+        sep.fill.solid()
+        sep.fill.fore_color.rgb = CHART_GRID
+        sep.line.fill.background()
+        sep.shadow.inherit = False
+        tb = slide.shapes.add_textbox(x0, top + int(height * 0.72), w, int(height * 0.28) - pad)
+        tf = tb.text_frame
+        tf.word_wrap = True
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+        for j, b in enumerate(bullets[:3]):
+            p = tf.paragraphs[0] if j == 0 else tf.add_paragraph()
+            r = p.add_run()
+            r.text = "•  " + b
+            r.font.size = Pt(14)
+            r.font.color.rgb = CHART_INK
+            if font:
+                r.font.name = font
+            p.space_after = Pt(4)
 
 
 def apply_fonts(prs, fonts: dict | None) -> None:
@@ -355,20 +573,38 @@ def build(template: Path, out: Path, lang: str, outline: dict, content: dict, im
         _set_text(b[0], outline["subtitle"])
     _clean_empty(s)
 
-    def content_slide(i, title, bullets, image=None, chart=None):
+    def content_slide(i, title, bullets, image=None, chart=None, layout=None, items=None):
         k = i % len(lay["content"])
         s = prs.slides.add_slide(lay["content"][k])
         _apply_decor(s, content_decor[k])
         if (t := _title_ph(s)) is not None:
             _set_text(t, title, _title_size(t, title, cover=False))
         body = _body_phs(s)
+        font = (fonts or {}).get("body")
+        if body and layout in ("steps", "timeline") and items and len(items) >= 2:
+            # Bosqich/vaqt chizig'i butun matn maydonini egallaydi; punktlar o'rniga infografika
+            b = body[0]
+            # Infografika uchun matn maydonidan kengroq joy: slayd kengligining 90%, pastgacha
+            sw, sh = prs.slide_width, prs.slide_height
+            left = min(b.left, int(sw * 0.05))
+            box = (left, b.top, sw - 2 * left, max(b.height, int(sh * 0.94) - b.top))
+            b._element.getparent().remove(b._element)
+            try:
+                _add_flow(s, box, items, layout, font, bullets)
+            except Exception:
+                log.exception("Infografika chizilmadi")
+            _clean_empty(s)
+            return
         media = False
         if body:
-            if chart or image:
+            want_stats = layout == "stats" and items and len(items) >= 2
+            if chart or image or want_stats:
                 area = _media_area(body[0], prs.slide_width)
                 try:
                     if chart:
-                        _add_chart(s, area, chart, (fonts or {}).get("body"))
+                        _add_chart(s, area, chart, font)
+                    elif want_stats:
+                        _add_stats(s, area, items, font)
                     else:
                         _add_picture(s, area, image)
                     media = True
@@ -383,7 +619,7 @@ def build(template: Path, out: Path, lang: str, outline: dict, content: dict, im
     # 3. Asosiy slaydlar
     for i, sl in enumerate(content["slides"], 1):
         content_slide(i, sl["title"], sl["bullets"], images[i - 1] if i - 1 < len(images) else None,
-                      sl.get("chart"))
+                      sl.get("chart"), sl.get("layout"), sl.get("items"))
 
     # 4. Yakuniy slayd
     s = prs.slides.add_slide(lay["closing"])
