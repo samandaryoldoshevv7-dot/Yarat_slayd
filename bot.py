@@ -370,13 +370,13 @@ async def create_slides(cb: CallbackQuery, state: FSMContext):
     await state.update_data(slides=int(cb.data.split(":")[1]))
     await state.set_state(Create.charts)
     kb = InlineKeyboardBuilder()
-    kb.button(text="📊 Ha, diagramma qo'shilsin", callback_data="charts:1")
+    kb.button(text="📊 Ha, diagramma va infografika", callback_data="charts:1")
     kb.button(text="Yo'q, faqat matn va rasm", callback_data="charts:0")
     kb.adjust(1)
     await cb.message.edit_text(
-        "📊 Slaydlarga <b>diagramma</b> qo'shilsinmi?\n"
-        "Raqamli ma'lumot bor joyga (ulushlar, yillar bo'yicha o'zgarish, taqqoslash) AI 1–3 ta "
-        "diagramma chizadi. Diagramma PowerPoint'da tahrirlanadi.",
+        "📊 Slaydlarga <b>diagramma va infografika</b> qo'shilsinmi?\n"
+        "AI mos joylarga diagramma (ulushlar, o'zgarish, taqqoslash), katta raqamlar, bosqichlar yoki "
+        "vaqt chizig'ini chizadi. Hammasi PowerPoint'da tahrirlanadi.",
         reply_markup=kb.as_markup(),
     )
     await cb.answer()

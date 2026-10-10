@@ -73,6 +73,17 @@ CHART_FIELDS = {
     "chart_labels": {"type": "array", "items": {"type": "string"}},
     "chart_values": {"type": "array", "items": {"type": "number"}},
     "chart_unit": {"type": "string"},
+    # Infografika: "text" (oddiy), "stats" (katta raqamlar), "steps" (bosqichlar), "timeline" (vaqt chizig'i)
+    "layout": {"type": "string"},
+    "items": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {"label": {"type": "string"}, "value": {"type": "string"}, "text": {"type": "string"}},
+            "required": ["label", "value", "text"],
+            "additionalProperties": False,
+        },
+    },
 }
 
 
@@ -89,6 +100,29 @@ def _content_schema(charts: bool) -> dict:
 
 
 MAX_CHARTS = 3
+MAX_INFOGRAPHICS = 3
+LAYOUTS = ("stats", "steps", "timeline")
+
+
+def clean_layout(s: dict) -> tuple[str | None, list | None]:
+    """AI bergan infografikani tekshiradi: (layout, items) yoki (None, None)."""
+    layout = str(s.get("layout") or "").lower().strip()
+    if layout not in LAYOUTS:
+        return None, None
+    items = []
+    for it in (s.get("items") or [])[:5 if layout != "stats" else 4]:
+        if not isinstance(it, dict):
+            continue
+        label = str(it.get("label") or "").strip()[:60]
+        value = str(it.get("value") or "").strip()[:24]
+        text = str(it.get("text") or "").strip()[:160]
+        if layout == "stats" and value and label:
+            items.append({"label": label, "value": value, "text": ""})
+        elif layout != "stats" and label:
+            items.append({"label": label, "value": "", "text": text})
+    if len(items) < 2:
+        return None, None
+    return layout, items
 
 
 def clean_chart(s: dict) -> dict | None:
@@ -358,6 +392,13 @@ async def make_content(topic: str, lang: str, outline: dict, charts: bool = Fals
     )
     if charts:
         prompt += (
+            "\n\nINFOGRAFIKA (layout): ko'pchilik slaydlar layout=\"text\". Mazmuniga mos 2–3 ta slaydga: "
+            "\"stats\" — 2–4 ta muhim raqam (items: value='7,2 mln t', label='yillik maishiy chiqindi'); "
+            "\"steps\" — 3–5 bosqichli jarayon (items: label='Saralash', text='bir jumlali izoh'); "
+            "\"timeline\" — 3–5 sanali voqealar (items: label='1991', text='qisqa izoh'). "
+            "Infografikali slaydlarda ham bullets'da 2–3 qisqa punkt bo'lsin. Faqat ishonchli raqam va sanalar."
+        )
+        prompt += (
             f"\n\nDIAGRAMMALAR: raqamli taqqoslash tabiiy bo'lgan 1–{MAX_CHARTS} ta slaydga diagramma qo'shing "
             "(chart_type: column — taqqoslash, bar — reyting, pie — ulushlar (yig'indisi 100), line — yillar bo'yicha "
             "o'zgarish). chart_labels 3–6 ta qisqa nom, chart_values shuncha raqam, chart_unit (masalan '%', 'mln', "
@@ -371,15 +412,22 @@ async def make_content(topic: str, lang: str, outline: dict, charts: bool = Fals
         s = data["slides"][i] if i < len(data["slides"]) else {"bullets": [], "image_query": ""}
         bullets = [b.strip() for b in s["bullets"] if b.strip()][:6]
         chart = clean_chart(s) if charts else None
+        layout, items = clean_layout(s) if charts else (None, None)
         slides.append({"title": s.get("title") or title, "bullets": bullets, "image_query": s.get("image_query", ""),
-                       "chart": chart})
-    # Juda ko'p diagramma bo'lsa ortiqchasini olib tashlaymiz
-    seen = 0
+                       "chart": chart, "layout": layout, "items": items})
+    # Juda ko'p diagramma yoki infografika bo'lsa ortiqchasini olib tashlaymiz
+    charts_seen = info_seen = 0
     for sl in slides:
         if sl["chart"]:
-            seen += 1
-            if seen > MAX_CHARTS:
+            charts_seen += 1
+            if charts_seen > MAX_CHARTS:
                 sl["chart"] = None
+        if sl["layout"]:
+            info_seen += 1
+            # Bosqich/vaqt chizig'i diagramma bilan bir slaydga sig'maydi
+            if info_seen > MAX_INFOGRAPHICS or (sl["chart"] and sl["layout"] != "stats") or \
+                    (sl["chart"] and sl["layout"] == "stats"):
+                sl["layout"], sl["items"] = None, None
     return {"slides": slides, "closing": data["closing"].strip()}
 
 
@@ -398,10 +446,23 @@ def _demo_content(outline: dict, charts: bool = False) -> dict:
             "title": t,
             "bullets": [f"{t} bo'yicha {k}-muhim fikr: bu yerda AI yozgan haqiqiy matn bo'ladi" for k in range(1, 5)],
             "image_query": "education",
-            "chart": None,
+            "chart": None, "layout": None, "items": None,
         }
         for t in outline["slides"]
     ]
+    if charts and len(slides) > 2:
+        slides[2]["layout"] = "stats"
+        slides[2]["items"] = [{"label": "yillik maishiy chiqindi", "value": "7,2 mln t", "text": ""},
+                              {"label": "qayta ishlanadigan ulush", "value": "30%", "text": ""},
+                              {"label": "o'sish sur'ati", "value": "4,6%", "text": ""}]
+    if charts and len(slides) > 4:
+        slides[4]["layout"] = "steps"
+        slides[4]["items"] = [{"label": l, "value": "", "text": "Bosqichning qisqa izohi shu yerda"}
+                              for l in ("Yig'ish", "Saralash", "Qayta ishlash", "Sotish")]
+    if charts and len(slides) > 5:
+        slides[5]["layout"] = "timeline"
+        slides[5]["items"] = [{"label": y, "value": "", "text": "Muhim voqea qisqacha"}
+                              for y in ("1991", "2005", "2017", "2026")]
     if charts and len(slides) > 1:
         slides[1]["chart"] = {"type": "column", "title": "Namuna diagramma", "unit": "%",
                               "labels": ["2022", "2023", "2024", "2025"], "values": [18, 27, 41, 56]}
