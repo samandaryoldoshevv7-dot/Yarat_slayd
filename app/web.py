@@ -139,6 +139,29 @@ def login_check(token: str, request: Request, response: Response):
     return {"ok": True, "session": _start_session(uid, request, response)}
 
 
+class CodeIn(BaseModel):
+    code: str = Field(pattern=r"^\d{5}$")
+
+
+_code_hits: dict[str, deque] = defaultdict(deque)
+
+
+@app.post("/api/login/code")
+def login_code(body: CodeIn, request: Request, response: Response):
+    """Botdan kelgan 5 xonali kod bilan kirish."""
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "").split(",")[0]
+    hits, now = _code_hits[ip], time.time()
+    while hits and now - hits[0] > 600:
+        hits.popleft()
+    if len(hits) >= 10:
+        raise HTTPException(429, "Juda ko'p urinish. 10 daqiqadan so'ng qayta urinib ko'ring.")
+    hits.append(now)
+    uid = db.take_login_code(body.code)
+    if uid is None:
+        raise HTTPException(400, "Kod noto'g'ri yoki eskirgan. Botdan yangi kod oling.")
+    return {"ok": True, "session": _start_session(uid, request, response)}
+
+
 class TelegramLoginIn(BaseModel):
     init_data: str = Field(max_length=4096)
 

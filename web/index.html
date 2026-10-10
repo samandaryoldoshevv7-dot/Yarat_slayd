@@ -420,6 +420,24 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 .modal-card p { color: var(--muted); margin: 8px 0 var(--s5); }
 .modal-card .wait { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; color: var(--muted); margin-top: var(--s4); }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--green-100); border-top-color: var(--green); animation: spin .8s linear infinite; }
+.login-card { position: relative; text-align: left; }
+.login-card h3 { font-size: 26px; }
+.login-card p { margin: 6px 0 20px; }
+.modal-x { position: absolute; right: 16px; top: 16px; border-radius: 50%; }
+.modal-x:hover { background: var(--bg-2); color: var(--ink); border-color: var(--line); }
+.tg-code-btn { display: block; text-align: center; text-decoration: none; padding: 16px; border-radius: 14px; border: 1px solid #CBE6F7; background: #EAF5FC; color: #1F5F87; transition: background-color .18s, transform .18s var(--ease); }
+.tg-code-btn:hover { background: #DDEFFA; transform: translateY(-1px); }
+.tg-code-btn span { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 16px; color: #17496A; }
+.tg-code-btn svg { width: 20px; height: 20px; color: #2AABEE; }
+.tg-code-btn small { display: block; margin-top: 4px; font-size: 13px; }
+.code-boxes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.code-boxes input { height: 60px; text-align: center; font: 700 26px var(--font-head); border: 1px solid var(--line); border-radius: 14px; background: var(--bg); outline: none; transition: border-color .18s, box-shadow .18s; min-width: 0; }
+.code-boxes input:focus { border-color: var(--green); box-shadow: 0 0 0 4px rgba(22,163,106,.14); background: var(--white); }
+.code-boxes.err input { border-color: var(--danger); animation: shake .3s; }
+.code-boxes.busy input { opacity: .6; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.code-msg { font-size: 13.5px; color: var(--muted); margin-top: 10px; text-align: center; min-height: 20px; }
+.code-msg.err { color: var(--danger); }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; z-index: 70; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px; box-shadow: var(--shadow-lg); transition: opacity .2s var(--ease), transform .2s var(--ease); pointer-events: none; max-width: calc(100% - 32px); }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .demo-banner { background: #FFF7E6; color: #8A5300; text-align: center; font-size: 14px; padding: 8px 16px; border-bottom: 1px solid #F6E2B8; }
@@ -996,13 +1014,21 @@ footer.site-footer { margin-top: 0; border-top: 1px solid var(--line); padding: 
 </footer>
 
 <div class="modal" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
-  <div class="modal-card">
-    <div class="tg"><svg><use href="#i-tg"/></svg></div>
-    <h3 id="loginTitle">Telegram orqali kirish</h3>
-    <p>Telegram ochiladi. U yerda <b>START</b> tugmasini bosing va shu sahifaga qayting. Kirish avtomatik tasdiqlanadi.</p>
-    <a class="btn btn-primary" id="loginLink" href="#" target="_blank" rel="noopener" style="width:100%">Telegram'ni ochish</a>
-    <div class="wait"><span class="spinner"></span>Tasdiqlash kutilmoqda...</div>
-    <button class="btn btn-tertiary btn-sm" id="loginClose" type="button" style="margin-top:12px">Bekor qilish</button>
+  <div class="modal-card login-card">
+    <button class="icon-btn modal-x" id="loginClose" type="button" aria-label="Yopish"><svg><use href="#i-x"/></svg></button>
+    <h3 id="loginTitle">Kirish</h3>
+    <p>YaratSlayd'ga xush kelibsiz. Parol kerak emas — kodni Telegram botdan olasiz.</p>
+    <a class="tg-code-btn" id="loginLink" href="#" target="_blank" rel="noopener">
+      <span><svg><use href="#i-tg"/></svg>Telegram'dan kodni olish</span>
+      <small>Bosing — Telegram ochiladi va kod keladi</small>
+    </a>
+    <label class="field-label" style="text-align:left;margin-top:22px" for="code0">Kelgan kodni kiriting</label>
+    <div class="code-boxes" id="codeBoxes">
+      <input id="code0" inputmode="numeric" autocomplete="one-time-code" maxlength="5" aria-label="1-raqam">
+      <input inputmode="numeric" maxlength="1" aria-label="2-raqam"><input inputmode="numeric" maxlength="1" aria-label="3-raqam">
+      <input inputmode="numeric" maxlength="1" aria-label="4-raqam"><input inputmode="numeric" maxlength="1" aria-label="5-raqam">
+    </div>
+    <div class="code-msg" id="codeMsg" aria-live="polite">Kod to'g'ri bo'lsa avtomatik kirasiz</div>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1084,36 +1110,52 @@ async function loadOrders() {
 }
 
 // ---------- Kirish ----------
-let loginTimer = null;
-async function login(btn) {
-  if (btn) loading(btn, true);
+async function login() {
+  if (!state.cfg.bot) return toast("Telegram orqali kirish hozircha ulanmagan.");
+  $("loginLink").href = `https://t.me/${state.cfg.bot}?start=login`;
+  codeInputs().forEach((i) => (i.value = ""));
+  setCodeMsg("Kod to'g'ri bo'lsa avtomatik kirasiz");
+  $("loginModal").classList.add("show");
+  setTimeout(() => $("loginLink").focus(), 50);
+}
+const codeInputs = () => [...$("codeBoxes").querySelectorAll("input")];
+function setCodeMsg(text, err) { $("codeMsg").textContent = text; $("codeMsg").classList.toggle("err", !!err); $("codeBoxes").classList.toggle("err", !!err); }
+
+async function submitCode() {
+  const ins = codeInputs(), code = ins.map((i) => i.value).join("");
+  if (!/^\d{5}$/.test(code)) return;
+  $("codeBoxes").classList.add("busy");
   try {
-    const { token, url } = await api("/api/login/start", { method: "POST" });
-    $("loginLink").href = url;
-    $("loginModal").classList.add("show");
-    $("loginLink").focus();
-    window.open(url, "_blank", "noopener");
-    const started = Date.now();
-    clearInterval(loginTimer);
-    loginTimer = setInterval(async () => {
-      if (Date.now() - started > 10 * 60 * 1000) { closeLogin(); return toast("Kirish vaqti tugadi. Qayta urinib ko'ring."); }
-      const r = await api("/api/login/check?token=" + encodeURIComponent(token)).catch(() => ({ ok: false }));
-      if (r.ok) {
-        state.session = r.session;
-        closeLogin();
-        await refreshMe();
-        toast("Xush kelibsiz, " + state.me.name + "!");
-        if (state.pendingGenerate) { state.pendingGenerate = false; generate(); }
-        if (state.pendingEdit) { const id = state.pendingEdit; state.pendingEdit = null; openEditor(id); }
-      }
-    }, 2000);
+    const r = await api("/api/login/code", { method: "POST", body: JSON.stringify({ code }) });
+    state.session = r.session;
+    closeLogin();
+    await refreshMe();
+    toast("Xush kelibsiz, " + state.me.name + "!");
+    if (state.pendingGenerate) { state.pendingGenerate = false; generate(); }
+    if (state.pendingEdit) { const id = state.pendingEdit; state.pendingEdit = null; openEditor(id); }
   } catch (e) {
-    toast(e.status === 503 ? "Telegram orqali kirish hozircha ulanmagan." : e.message);
+    setCodeMsg(e.message, true);
+    ins.forEach((i) => (i.value = "")); ins[0].focus();
   } finally {
-    if (btn) loading(btn, false);
+    $("codeBoxes").classList.remove("busy");
   }
 }
-function closeLogin() { clearInterval(loginTimer); $("loginModal").classList.remove("show"); }
+// 5 ta katak: raqam yozilsa keyingisiga o'tadi, joylashtirilgan (paste) kod taqsimlanadi
+$("codeBoxes").addEventListener("input", (e) => {
+  const ins = codeInputs(), i = ins.indexOf(e.target);
+  const digits = e.target.value.replace(/\D/g, "");
+  if (digits.length > 1) { digits.slice(0, 5).split("").forEach((d, j) => { if (ins[i + j]) ins[i + j].value = d; }); }
+  else e.target.value = digits;
+  setCodeMsg("Kod to'g'ri bo'lsa avtomatik kirasiz");
+  const next = ins.find((x) => !x.value);
+  if (next) { if (digits) next.focus(); } else submitCode();
+});
+$("codeBoxes").addEventListener("keydown", (e) => {
+  const ins = codeInputs(), i = ins.indexOf(e.target);
+  if (e.key === "Backspace" && !e.target.value && i > 0) { ins[i - 1].value = ""; ins[i - 1].focus(); }
+});
+$("loginLink").addEventListener("click", () => setTimeout(() => codeInputs()[0].focus(), 300));
+function closeLogin() { $("loginModal").classList.remove("show"); }
 
 // ---------- Balansni to'ldirish (Click) ----------
 function topupButtons() {
@@ -1664,8 +1706,8 @@ $("newBtn").addEventListener("click", () => {
   setTimeout(() => $("topic").focus({ preventScroll: true }), 400);
 });
 $("moreBtn").addEventListener("click", () => { state.galleryShown += PAGE(); renderGallery(); });
-$("loginBtn").addEventListener("click", (e) => login(e.currentTarget));
-$("loginBtnM").addEventListener("click", (e) => { $("mobilePanel").classList.remove("open"); login(e.currentTarget); });
+$("loginBtn").addEventListener("click", () => login());
+$("loginBtnM").addEventListener("click", () => { $("mobilePanel").classList.remove("open"); login(); });
 $("loginClose").addEventListener("click", () => { state.pendingGenerate = false; closeLogin(); });
 $("loginModal").addEventListener("click", (e) => { if (e.target === $("loginModal")) { state.pendingGenerate = false; closeLogin(); } });
 $("logoutBtn").addEventListener("click", async () => { await api("/api/logout", { method: "POST" }).catch(() => {}); $("profileMenu").hidden = true; await refreshMe(); toast("Hisobdan chiqdingiz."); });

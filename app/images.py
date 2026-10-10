@@ -38,8 +38,9 @@ async def _pexels(session: aiohttp.ClientSession, query: str) -> bytes | None:
 
 
 async def _pollinations(session: aiohttp.ClientSession, query: str) -> bytes | None:
-    prompt = f"{query}, professional photo, high quality, no text"
-    params = {"width": 1024, "height": 768, "nologo": "true", "seed": random.randint(1, 10**6)}
+    prompt = (f"{query}. Realistic professional photograph, natural light, sharp focus, "
+              "clean composition, high detail, no text, no watermark, no logo")
+    params = {"width": 1024, "height": 768, "nologo": "true", "model": "flux", "seed": random.randint(1, 10**6)}
     async with session.get(POLLINATIONS_URL.format(prompt=quote(prompt)), params=params) as r:
         if r.status != 200 or not r.headers.get("Content-Type", "").startswith("image/"):
             log.warning("Pollinations %s: %s", r.status, query)

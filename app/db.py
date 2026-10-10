@@ -33,6 +33,11 @@ CREATE TABLE IF NOT EXISTS web_logins (
     user_id INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS login_codes (
+    code TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS web_sessions (
     token TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -323,3 +328,31 @@ def recent_orders(limit: int = 50):
         return c.execute(
             "SELECT o.*, u.full_name, u.username FROM orders o LEFT JOIN users u ON u.id=o.user_id "
             "ORDER BY o.id DESC LIMIT ?", (limit,)).fetchall()
+
+
+# ---------------- Telegram orqali kod bilan kirish ----------------
+
+LOGIN_CODE_TTL = "-2 minutes"
+
+
+def create_login_code(user_id: int) -> str:
+    """Foydalanuvchiga 5 xonali bir martalik kod (2 daqiqa amal qiladi)."""
+    import secrets
+
+    with tx() as c:
+        c.execute("DELETE FROM login_codes WHERE user_id=? OR created_at < datetime('now', ?)",
+                  (user_id, LOGIN_CODE_TTL))
+        while True:
+            code = f"{secrets.randbelow(90000) + 10000}"
+            if not c.execute("SELECT 1 FROM login_codes WHERE code=?", (code,)).fetchone():
+                break
+        c.execute("INSERT INTO login_codes (code, user_id) VALUES (?,?)", (code, user_id))
+        return code
+
+
+def take_login_code(code: str) -> int | None:
+    with tx() as c:
+        row = c.execute("SELECT user_id FROM login_codes WHERE code=? AND created_at >= datetime('now', ?)",
+                        (code, LOGIN_CODE_TTL)).fetchone()
+        c.execute("DELETE FROM login_codes WHERE code=?", (code,))
+        return row["user_id"] if row else None

@@ -73,6 +73,8 @@ def som(amount: int) -> str:
 @router.message(CommandStart())
 async def start(msg: Message, command: CommandObject, state: FSMContext):
     await state.clear()
+    if command.args == "login":
+        return await send_login_code(msg)
     if command.args and command.args.startswith("weblogin_"):
         db.register_user(msg.from_user.id, msg.from_user.username, msg.from_user.full_name, None)
         if db.confirm_login(command.args[len("weblogin_"):], msg.from_user.id):
@@ -94,6 +96,18 @@ async def start(msg: Message, command: CommandObject, state: FSMContext):
     if is_new and config.WELCOME_BONUS:
         text += f"\n🎁 Sizga <b>{som(config.WELCOME_BONUS)}</b> sovg'a qilindi — birinchi taqdimot bepul!"
     await msg.answer(text, reply_markup=MAIN_KB)
+
+
+@router.message(Command("kod"))
+async def send_login_code(msg: Message):
+    """Saytga kirish uchun bir martalik kod."""
+    db.register_user(msg.from_user.id, msg.from_user.username, msg.from_user.full_name, None)
+    code = db.create_login_code(msg.from_user.id)
+    await msg.answer(
+        f"🔐 <b>Saytga kirish kodi</b>\n\n<code>{code}</code>\n\n"
+        "⏱ Kod 2 daqiqa amal qiladi.\n⚠️ Kodni hech kimga bermang!",
+        reply_markup=MAIN_KB,
+    )
 
 
 def ensure_user(user) -> None:

@@ -352,8 +352,8 @@ async def make_content(topic: str, lang: str, outline: dict, charts: bool = Fals
     prompt = (
         f"Mavzu: {topic}\nTaqdimot sarlavhasi: {outline['title']}\nTil: {LANGS[lang]}\n\n"
         f"Quyidagi reja bo'yicha har bir slayd uchun matn yozing, tartib va sarlavhalarni saqlang:\n{titles}\n\n"
-        "Har slaydga 4–5 ta mazmunli punkt. image_query — shu slaydga mos fotosurat qidirish uchun "
-        "2–4 so'zli INGLIZCHA ibora (masalan 'solar panels field'). closing — yakuniy slayd uchun bitta "
+        "Har slaydga 4–5 ta mazmunli punkt. image_query — shu slayd uchun rasm tavsifi INGLIZCHA, 6–12 so'z, "
+        "aniq va real sahna (masalan 'wind turbines on green hills at sunset, wide shot'), matnsiz. closing — yakuniy slayd uchun bitta "
         f"qisqa xulosa jumla. Matn {LANGS[lang]} da bo'lsin."
     )
     if charts:
